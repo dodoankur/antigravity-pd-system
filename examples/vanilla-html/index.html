@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>PD Measurement Widget - Vanilla HTML Example</title>
+        <style>
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+                background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+                min-height: 100vh;
+                padding: 40px 20px;
+            }
+
+            .container {
+                max-width: 600px;
+                margin: 0 auto;
+            }
+
+            .header {
+                text-align: center;
+                margin-bottom: 32px;
+                color: white;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+                margin-bottom: 8px;
+            }
+
+            .header p {
+                opacity: 0.9;
+            }
+
+            /* Widget container */
+            #pd-widget {
+                margin-bottom: 24px;
+            }
+
+            /* Results panel */
+            .results-panel {
+                background: white;
+                border-radius: 12px;
+                padding: 24px;
+                display: none;
+            }
+
+            .results-panel.visible {
+                display: block;
+            }
+
+            .results-panel h3 {
+                font-size: 1.125rem;
+                margin-bottom: 16px;
+                color: #111827;
+            }
+
+            .results-panel pre {
+                background: #f9fafb;
+                padding: 16px;
+                border-radius: 8px;
+                font-size: 0.875rem;
+                overflow-x: auto;
+            }
+
+            .footer {
+                text-align: center;
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 0.875rem;
+                margin-top: 24px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>PD Measurement Demo</h1>
+                <p>Vanilla HTML Integration Example</p>
+            </div>
+
+            <!-- Widget container -->
+            <div id="pd-widget"></div>
+
+            <!-- Results display -->
+            <div id="results-panel" class="results-panel">
+                <h3>Last Measurement Result (JSON)</h3>
+                <pre id="results-json"></pre>
+            </div>
+
+            <div class="footer">
+                <p>Powered by PD Measurement Widget v1.0.0</p>
+            </div>
+        </div>
+
+        <!-- Load the widget script -->
+        <!-- In production, use: <script src="https://your-cdn.com/pd-widget.js"></script> -->
+        <script src="../../frontend/dist/widget/pd-widget.js"></script>
+
+        <script>
+            // Wait for script to load
+            document.addEventListener("DOMContentLoaded", function () {
+                // Check if widget is available
+                if (typeof PDMeasurementWidget === "undefined") {
+                    console.error("PDMeasurementWidget not loaded");
+                    document.getElementById("pd-widget").innerHTML =
+                        '<p style="color: white; text-align: center;">Widget not loaded. Please build the widget first:<br><code>cd frontend && npm run build:widget</code></p>';
+                    return;
+                }
+
+                // Initialize the widget
+                PDMeasurementWidget.init("#pd-widget", {
+                    // API endpoint - change this to your backend URL
+                    apiEndpoint: "http://localhost:8000/api/pd/measure",
+
+                    // Callback when measurement is complete
+                    onMeasurement: function (result) {
+                        console.log("Measurement complete:", result);
+
+                        // Show results panel
+                        var panel = document.getElementById("results-panel");
+                        var json = document.getElementById("results-json");
+
+                        panel.classList.add("visible");
+                        json.textContent = JSON.stringify(result, null, 2);
+
+                        // You can use the result data here
+                        // result.overall_pd_mm - Overall PD in mm
+                        // result.left_pd_mm - Left eye PD
+                        // result.right_pd_mm - Right eye PD
+                        // result.confidence_score - Confidence (0-1)
+                        // result.error_margin - Error margin details
+                    },
+
+                    // Callback on error
+                    onError: function (error) {
+                        console.error("Measurement error:", error);
+                        alert("Error: " + error);
+                    },
+
+                    // Optional: Custom primary color
+                    // primaryColor: '#4f46e5'
+                });
+            });
+        </script>
+    </body>
+</html>

@@ -1,0 +1,490 @@
+/* PD Measurer Widget Styles */
+
+.pd-measurer {
+    background: var(--pd-bg, #ffffff);
+    border-radius: var(--pd-radius, 12px);
+    box-shadow: var(--pd-shadow-lg, 0 10px 15px -3px rgb(0 0 0 / 0.1));
+    overflow: hidden;
+    max-width: 100%;
+}
+
+.pd-measurer__header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--pd-border, #e5e7eb);
+    text-align: center;
+}
+
+.pd-measurer__title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--pd-text, #111827);
+    margin: 0;
+}
+
+.pd-measurer__body {
+    padding: 24px;
+}
+
+/* Step indicator */
+.pd-measurer__steps {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.pd-measurer__step {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.pd-measurer__step--active {
+    background: var(--pd-primary, #4f46e5);
+    color: white;
+}
+
+.pd-measurer__step--completed {
+    background: var(--pd-success, #10b981);
+    color: white;
+}
+
+.pd-measurer__step--pending {
+    background: var(--pd-bg-secondary, #f9fafb);
+    color: var(--pd-text-muted, #6b7280);
+    border: 2px solid var(--pd-border, #e5e7eb);
+}
+
+.pd-measurer__step-divider {
+    width: 40px;
+    height: 2px;
+    background: var(--pd-border, #e5e7eb);
+    align-self: center;
+}
+
+/* Image capture area */
+.pd-measurer__capture {
+    border: 2px dashed var(--pd-border, #e5e7eb);
+    border-radius: 8px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: var(--pd-bg-secondary, #f9fafb);
+}
+
+.pd-measurer__capture:hover {
+    border-color: var(--pd-primary, #4f46e5);
+    background: #f0f0ff;
+}
+
+.pd-measurer__capture--active {
+    border-color: var(--pd-primary, #4f46e5);
+    border-style: solid;
+}
+
+.pd-measurer__capture-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 16px;
+    color: var(--pd-primary, #4f46e5);
+}
+
+.pd-measurer__capture-text {
+    font-size: 1rem;
+    color: var(--pd-text, #111827);
+    margin-bottom: 8px;
+}
+
+.pd-measurer__capture-hint {
+    font-size: 0.875rem;
+    color: var(--pd-text-muted, #6b7280);
+}
+
+/* Preview image */
+.pd-measurer__preview {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.pd-measurer__preview-image {
+    width: 100%;
+    max-height: 300px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: #000;
+}
+
+.pd-measurer__preview-remove {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
+}
+
+.pd-measurer__preview-remove:hover {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+/* Camera capture */
+.pd-measurer__camera {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.pd-measurer__camera-video {
+    width: 100%;
+    max-height: 300px;
+    border-radius: 8px;
+    background: #000;
+    transform: scaleX(-1); /* Mirror effect for live preview */
+}
+
+.pd-measurer__preview-image {
+    width: 100%;
+    max-height: 300px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: #000;
+}
+
+.pd-measurer__camera-controls {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+/* Reference selector */
+.pd-measurer__reference {
+    margin-bottom: 24px;
+}
+
+.pd-measurer__reference-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--pd-text, #111827);
+    margin-bottom: 8px;
+}
+
+.pd-measurer__reference-select {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid var(--pd-border, #e5e7eb);
+    border-radius: 8px;
+    font-size: 1rem;
+    background: white;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+.pd-measurer__reference-select:focus {
+    outline: none;
+    border-color: var(--pd-primary, #4f46e5);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.pd-measurer__reference-hint {
+    margin-top: 8px;
+    font-size: 0.75rem;
+    color: var(--pd-text-muted, #6b7280);
+}
+
+/* Buttons */
+.pd-measurer__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.pd-measurer__btn--primary {
+    background: var(--pd-primary, #4f46e5);
+    color: white;
+    width: 100%;
+}
+
+.pd-measurer__btn--primary:hover:not(:disabled) {
+    background: var(--pd-primary-hover, #4338ca);
+}
+
+.pd-measurer__btn--primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.pd-measurer__btn--secondary {
+    background: transparent;
+    color: var(--pd-text, #111827);
+    border: 1px solid var(--pd-border, #e5e7eb);
+}
+
+.pd-measurer__btn--secondary:hover {
+    background: var(--pd-bg-secondary, #f9fafb);
+}
+
+.pd-measurer__btn--icon {
+    padding: 12px;
+    border-radius: 50%;
+}
+
+/* Loading state */
+.pd-measurer__loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+}
+
+.pd-measurer__spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--pd-border, #e5e7eb);
+    border-top-color: var(--pd-primary, #4f46e5);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.pd-measurer__loading-text {
+    margin-top: 16px;
+    color: var(--pd-text-muted, #6b7280);
+}
+
+/* Results */
+.pd-measurer__results {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.pd-measurer__results-header {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.pd-measurer__results-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 12px;
+    color: var(--pd-success, #10b981);
+}
+
+.pd-measurer__results-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--pd-text, #111827);
+}
+
+.pd-measurer__measurements {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.pd-measurer__measurement {
+    background: var(--pd-bg-secondary, #f9fafb);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+}
+
+.pd-measurer__measurement-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--pd-text-muted, #6b7280);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+}
+
+.pd-measurer__measurement-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--pd-primary, #4f46e5);
+}
+
+.pd-measurer__measurement-unit {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--pd-text-muted, #6b7280);
+}
+
+/* Confidence badge */
+.pd-measurer__confidence {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--pd-bg-secondary, #f9fafb);
+    border-radius: 20px;
+    margin-bottom: 16px;
+}
+
+.pd-measurer__confidence-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.pd-measurer__confidence-dot--high {
+    background: var(--pd-success, #10b981);
+}
+
+.pd-measurer__confidence-dot--moderate {
+    background: var(--pd-warning, #f59e0b);
+}
+
+.pd-measurer__confidence-dot--low {
+    background: var(--pd-error, #ef4444);
+}
+
+.pd-measurer__confidence-text {
+    font-size: 0.875rem;
+    color: var(--pd-text-muted, #6b7280);
+}
+
+/* Method info */
+.pd-measurer__method {
+    padding: 12px 16px;
+    background: var(--pd-bg-secondary, #f9fafb);
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.pd-measurer__method-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--pd-text-muted, #6b7280);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.pd-measurer__method-value {
+    font-size: 0.875rem;
+    color: var(--pd-text, #111827);
+}
+
+/* Disclaimer */
+.pd-measurer__disclaimer {
+    padding: 16px;
+    background: #fff7ed;
+    border: 1px solid #fdba74;
+    border-radius: 8px;
+    margin-bottom: 24px;
+}
+
+.pd-measurer__disclaimer-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #9a3412;
+    margin-bottom: 8px;
+}
+
+.pd-measurer__disclaimer-text {
+    font-size: 0.8125rem;
+    color: #7c2d12;
+    white-space: pre-line;
+    line-height: 1.5;
+}
+
+/* Actions */
+.pd-measurer__actions {
+    display: flex;
+    gap: 12px;
+}
+
+.pd-measurer__actions .pd-measurer__btn {
+    flex: 1;
+}
+
+/* Error state */
+.pd-measurer__error {
+    padding: 16px;
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.pd-measurer__error-text {
+    color: #991b1b;
+    font-size: 0.875rem;
+}
+
+/* Tab buttons for capture mode */
+.pd-measurer__tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.pd-measurer__tab {
+    flex: 1;
+    padding: 10px 16px;
+    border: 1px solid var(--pd-border, #e5e7eb);
+    background: white;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--pd-text-muted, #6b7280);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.pd-measurer__tab:hover {
+    background: var(--pd-bg-secondary, #f9fafb);
+}
+
+.pd-measurer__tab--active {
+    background: var(--pd-primary, #4f46e5);
+    color: white;
+    border-color: var(--pd-primary, #4f46e5);
+}
+
+.pd-measurer__tab--active:hover {
+    background: var(--pd-primary-hover, #4338ca);
+}

@@ -114,6 +114,32 @@ async def measure_pd(
             detail="No face detected in image. Please upload a clear, front-facing photo with both eyes visible."
         )
     
+    # ROBUST VALIDATION: Align with frontend symmetry and handle Euler flip noise
+    # 1. Symmetry check (Primary - identical logic to frontend gating)
+    sym = iris_data.pose_symmetry
+    if not (0.35 <= sym['horizontal'] <= 0.65) or not (0.30 <= sym['vertical'] <= 0.70):
+        print(f"DEBUG: Symmetry Check Failed - Horizontal: {sym['horizontal']}, Vertical: {sym['vertical']}")
+        raise HTTPException(
+            status_code=422,
+            detail=f"Head tilt detected (Symmetry: H={sym['horizontal']}, V={sym['vertical']}). Please look directly at the camera."
+        )
+        
+    # 2. SolvePnP Euler Angles (Secondary - handle 180-degree Pitch flip)
+    # Pose is mathematically noisy; we only block on clear, extreme outliers (>45 deg)
+    pitch, yaw = iris_data.head_pose['pitch'], iris_data.head_pose['yaw']
+    
+    # Check for 180-degree flip in pitch (common in SolvePnP/DecomposeProjectionMatrix)
+    adjusted_pitch = abs(pitch)
+    if adjusted_pitch > 90:
+        adjusted_pitch = abs(adjusted_pitch - 180)
+        
+    if abs(yaw) > 35 or adjusted_pitch > 35:
+        print(f"DEBUG: Pose Check Failed - Yaw: {yaw}, Adjusted Pitch: {adjusted_pitch}")
+        raise HTTPException(
+            status_code=422,
+            detail=f"Head tilt detected (Pose: Y={round(yaw,1)}, P={round(adjusted_pitch,1)}). Please look directly at the camera."
+        )
+    
     # Parse reference type
     try:
         ref_type = ReferenceType(reference_type.lower())

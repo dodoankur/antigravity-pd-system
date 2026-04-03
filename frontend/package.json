@@ -11,6 +11,9 @@
         "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
     },
     "dependencies": {
+        "@mediapipe/camera_utils": "^0.3.1675466862",
+        "@mediapipe/drawing_utils": "^0.3.1675466124",
+        "@mediapipe/face_mesh": "^0.4.1633559619",
         "react": "^18.2.0",
         "react-dom": "^18.2.0"
     },

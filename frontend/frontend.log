@@ -1,0 +1,21 @@
+
+> pd-measurement-widget@1.0.0 dev
+> vite --host --port 3000
+
+
+  VITE v5.4.21  ready in 154 ms
+
+  ➜  Local:   http://localhost:3000/
+  ➜  Network: http://192.168.1.36:3000/
+9:36:53 PM [vite] hmr update /src/components/PDMeasurer/index.tsx
+9:45:09 PM [vite] hmr update /src/components/PDMeasurer/index.tsx
+9:45:26 PM [vite] hmr update /src/components/PDMeasurer/index.tsx
+9:55:45 PM [vite] hmr update /src/components/PDMeasurer/index.tsx
+9:55:54 PM [vite] hmr update /src/components/PDMeasurer/index.tsx
+9:56:09 PM [vite] hmr update /src/components/PDMeasurer/index.tsx
+10:01:50 PM [vite] hmr update /src/components/PDMeasurer/index.tsx
+10:02:06 PM [vite] hmr update /src/components/PDMeasurer/index.tsx
+10:02:15 PM [vite] hmr update /src/components/PDMeasurer/index.tsx
+10:07:58 PM [vite] hmr update /src/components/PDMeasurer/index.tsx
+10:08:29 PM [vite] hmr update /src/components/PDMeasurer/index.tsx
+10:08:46 PM [vite] hmr update /src/components/PDMeasurer/index.tsx

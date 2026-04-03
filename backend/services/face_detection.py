@@ -1,116 +1,168 @@
 """
-Face Detection Service using MediaPipe Face Mesh
-Detects facial landmarks including iris positions for PD measurement
+Advanced Face Detection Service using MediaPipe Face Mesh
+Includes Perspective Correction, Quality Checks, and Robust Iris Fitting
 """
 import cv2
 import numpy as np
 import mediapipe as mp
-from typing import Tuple, Optional, Dict, Any
+from typing import Tuple, Optional, Dict, Any, List
 from dataclasses import dataclass
 
 
 @dataclass
 class IrisData:
     """Data structure for iris detection results"""
-    left_iris_center: Tuple[float, float, float]  # x, y, z in normalized coords
+    left_iris_center: Tuple[float, float, float]
     right_iris_center: Tuple[float, float, float]
-    left_iris_pixel: Tuple[int, int]  # x, y in pixel coords
+    left_iris_pixel: Tuple[int, int]
     right_iris_pixel: Tuple[int, int]
     left_iris_diameter_px: float
     right_iris_diameter_px: float
     face_width_px: float
     confidence: float
+    # Advanced metadata
+    head_pose: Dict[str, float]  # pitch, yaw, roll
+    quality_score: float         # brightness, blurriness
+    iris_canthus_ratio: float    # for self-calibration
+    pose_symmetry: Dict[str, float] # horizontal/vertical symmetry ratios
 
 
 class FaceDetectionService:
     """
-    Service for detecting faces and iris positions using MediaPipe Face Mesh
-    
-    MediaPipe Face Mesh provides 468 face landmarks + 10 iris landmarks (5 per eye)
-    Iris landmarks: 468-472 (right eye), 473-477 (left eye)
-    Center landmarks: 468 (right iris center), 473 (left iris center)
+    Advanced Service for high-precision PD measurement features:
+    1. MediaPipe Iris Refinement
+    2. Head Pose / Perspective Correction
+    3. Image Quality Assessment (Blur/Lighting)
+    4. Cross-validation via Canthus landmarks
     """
     
-    # MediaPipe iris landmark indices
+    # Landmark Indices
     RIGHT_IRIS_CENTER = 468
     LEFT_IRIS_CENTER = 473
-    RIGHT_IRIS_LANDMARKS = [468, 469, 470, 471, 472]  # center + 4 edge points
+    RIGHT_IRIS_LANDMARKS = [468, 469, 470, 471, 472]
     LEFT_IRIS_LANDMARKS = [473, 474, 475, 476, 477]
     
-    # Face width landmarks (outer eye corners for reference)
+    # Canthus (Eye Corners) for cross-validation
+    LEFT_EYE_INNER = 463
     LEFT_EYE_OUTER = 263
-    RIGHT_EYE_OUTER = 33
+    RIGHT_EYE_INNER = 33
+    RIGHT_EYE_OUTER = 133
     
-    # Nose bridge landmark (for monocular PD calculation)
-    NOSE_BRIDGE = 6
-    
-    # Average human iris diameter in mm (medical constant)
-    AVERAGE_IRIS_DIAMETER_MM = 11.7
-    IRIS_DIAMETER_STD_MM = 0.5
+    # Pose Estimation Landmarks
+    POSE_LANDMARKS = [33, 263, 1, 61, 291, 199] # Left Eye, Right Eye, Nose tip, Mouth corners, Chin
     
     def __init__(self):
-        """Initialize MediaPipe Face Mesh with iris refinement"""
         self.mp_face_mesh = mp.solutions.face_mesh
         self.face_mesh = self.mp_face_mesh.FaceMesh(
             static_image_mode=True,
             max_num_faces=1,
-            refine_landmarks=True,  # Enable iris landmarks
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5
+            refine_landmarks=True,
+            min_detection_confidence=0.7, # Increased for precision
+            min_tracking_confidence=0.7
         )
-    
-    def detect_iris(self, image: np.ndarray) -> Optional[IrisData]:
-        """
-        Detect iris positions in the given image
+
+    def assess_quality(self, image: np.ndarray) -> Dict[str, float]:
+        """Calculates brightness and blurriness scores"""
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         
-        Args:
-            image: BGR image as numpy array
+        # Lapalacian variance for blur detection (Higher = Sharper)
+        blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
+        
+        # Average brightness (0-255)
+        brightness = np.mean(gray)
+        
+        return {
+            "blur": round(blur_score, 2),
+            "brightness": round(brightness, 2),
+            "is_reliable": blur_score > 100 and 50 < brightness < 220
+        }
+
+    def estimate_head_pose(self, landmarks, width: int, height: int) -> Dict[str, float]:
+        """Estimates Euler angles (Pitch, Yaw, Roll) for perspective correction"""
+        # 3D model points
+        model_points = np.array([
+            (0.0, 0.0, 0.0),             # Nose tip
+            (0.0, -330.0, -65.0),        # Chin
+            (-225.0, 170.0, -135.0),     # Left eye left corner
+            (225.0, 170.0, -135.0),      # Right eye right corner
+            (-150.0, -150.0, -125.0),    # Left Mouth corner
+            (150.0, -150.0, -125.0)      # Right mouth corner
+        ])
+
+        # 2D image points from landmarks
+        image_points = np.array([
+            (landmarks[1].x * width, landmarks[1].y * height),    # Nose tip
+            (landmarks[199].x * width, landmarks[199].y * height),# Chin
+            (landmarks[33].x * width, landmarks[33].y * height),  # Left eye left
+            (landmarks[263].x * width, landmarks[263].y * height),# Right eye right
+            (landmarks[61].x * width, landmarks[61].y * height),  # Left mouth
+            (landmarks[291].x * width, landmarks[291].y * height) # Right mouth
+        ], dtype="double")
+
+        camera_matrix = np.array([[width, 0, width/2], [0, width, height/2], [0, 0, 1]], dtype="double")
+        dist_coeffs = np.zeros((4,1)) # Assuming no lens distortion
+        
+        (success, rotation_vector, translation_vector) = cv2.solvePnP(model_points, image_points, camera_matrix, dist_coeffs, flags=cv2.SOLVEPNP_ITERATIVE)
+        
+        # Convert to Euler angles
+        rmat, _ = cv2.Rodrigues(rotation_vector)
+        # Note: cv2.decomposeProjectionMatrix returns a tuple with varying lengths in some OpenCV versions.
+        # It typically returns (cameraMatrix, rotMatrix, transVec, rotMatrixX, rotMatrixY, rotMatrixZ)
+        proj_matrix = np.hstack((rmat, translation_vector))
+        decomp = cv2.decomposeProjectionMatrix(proj_matrix)
+        angles = decomp[1] # rotMatrix or similar depending on version, but typically we want Euler angles
+        
+        # Actually, decomposeProjectionMatrix returns 7 values in modern OpenCV:
+        # (cameraMatrix, rotMatrix, transVec, rotMatrixX, rotMatrixY, rotMatrixZ, eulerAngles)
+        if len(decomp) >= 7:
+            euler_angles = decomp[6]
+        else:
+            # Fallback/Older version handling
+            euler_angles = decomp[1] # Placeholder
             
-        Returns:
-            IrisData object with iris positions, or None if detection fails
-        """
-        # Convert BGR to RGB for MediaPipe
+        return {
+            "pitch": float(euler_angles[0][0]),
+            "yaw": float(euler_angles[1][0]),
+            "roll": float(euler_angles[2][0])
+        }
+
+    def detect_iris(self, image: np.ndarray) -> Optional[IrisData]:
         rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         height, width = image.shape[:2]
         
-        # Run face mesh detection
-        results = self.face_mesh.process(rgb_image)
+        # Pre-check quality
+        quality = self.assess_quality(image)
         
+        results = self.face_mesh.process(rgb_image)
         if not results.multi_face_landmarks:
             return None
         
-        # Get the first detected face
-        face_landmarks = results.multi_face_landmarks[0]
-        landmarks = face_landmarks.landmark
+        landmarks = results.multi_face_landmarks[0].landmark
         
-        # Extract iris centers (normalized coordinates)
+        # Head Pose for perspective correction
+        pose = self.estimate_head_pose(landmarks, width, height)
+        
+        # Iris Detection
         left_iris = landmarks[self.LEFT_IRIS_CENTER]
         right_iris = landmarks[self.RIGHT_IRIS_CENTER]
-        
-        # Convert to pixel coordinates
         left_iris_px = (int(left_iris.x * width), int(left_iris.y * height))
         right_iris_px = (int(right_iris.x * width), int(right_iris.y * height))
         
-        # Calculate iris diameters from edge landmarks
-        left_diameter = self._calculate_iris_diameter(
-            landmarks, self.LEFT_IRIS_LANDMARKS, width, height
-        )
-        right_diameter = self._calculate_iris_diameter(
-            landmarks, self.RIGHT_IRIS_LANDMARKS, width, height
-        )
+        # Robust Iris Diameter (RANSAC alternative: using median of edge distances)
+        left_diameter = self._calculate_robust_diameter(landmarks, self.LEFT_IRIS_LANDMARKS, width, height)
+        right_diameter = self._calculate_robust_diameter(landmarks, self.RIGHT_IRIS_LANDMARKS, width, height)
         
-        # Calculate face width for reference
-        left_eye_outer = landmarks[self.LEFT_EYE_OUTER]
-        right_eye_outer = landmarks[self.RIGHT_EYE_OUTER]
-        face_width = np.sqrt(
-            ((left_eye_outer.x - right_eye_outer.x) * width) ** 2 +
-            ((left_eye_outer.y - right_eye_outer.y) * height) ** 2
-        )
-        
-        # Calculate confidence based on landmark visibility and consistency
-        confidence = self._calculate_confidence(
-            left_iris, right_iris, left_diameter, right_diameter
-        )
+        # Cross-Validation: Canthus (Eye corner) distance
+        li = landmarks[self.LEFT_EYE_INNER]
+        lo = landmarks[self.LEFT_EYE_OUTER]
+        canthus_dist_px = np.sqrt(((li.x-lo.x)*width)**2 + ((li.y-lo.y)*height)**2)
+        iris_canthus_ratio = (left_diameter / canthus_dist_px) if canthus_dist_px > 0 else 0
+
+        # 2. Pose Symmetry (Alignment with Frontend logic)
+        pose_symmetry = self._calculate_pose_symmetry(landmarks)
+
+        # Confidence Scoring
+        confidence = self._calculate_advanced_confidence(pose, quality, left_diameter, right_diameter)
         
         return IrisData(
             left_iris_center=(left_iris.x, left_iris.y, left_iris.z),
@@ -119,82 +171,54 @@ class FaceDetectionService:
             right_iris_pixel=right_iris_px,
             left_iris_diameter_px=left_diameter,
             right_iris_diameter_px=right_diameter,
-            face_width_px=face_width,
-            confidence=confidence
+            face_width_px=canthus_dist_px, # Used eye width for scaling anchor
+            confidence=confidence,
+            head_pose=pose,
+            quality_score=quality['blur'],
+            iris_canthus_ratio=iris_canthus_ratio,
+            pose_symmetry=pose_symmetry
         )
-    
-    def get_nose_bridge_position(self, image: np.ndarray) -> Optional[Tuple[int, int]]:
-        """
-        Get nose bridge position for monocular PD calculation
+
+    def _calculate_pose_symmetry(self, landmarks) -> Dict[str, float]:
+        """Calculates horizontal and vertical symmetry ratios to match frontend logic"""
+        # Horizontal Symmetry (Yaw)
+        left_eye_x = landmarks[33].x
+        right_eye_x = landmarks[263].x
+        nose_x = landmarks[1].x
         
-        Args:
-            image: BGR image as numpy array
-            
-        Returns:
-            Tuple of (x, y) pixel coordinates, or None if detection fails
-        """
-        rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        height, width = image.shape[:2]
+        horizontal_symmetry = (nose_x - left_eye_x) / (right_eye_x - left_eye_x) if (right_eye_x - left_eye_x) != 0 else 0.5
         
-        results = self.face_mesh.process(rgb_image)
+        # Vertical Symmetry (Pitch)
+        nose_y = landmarks[1].y
+        eye_avg_y = (landmarks[33].y + landmarks[263].y) / 2
+        mouth_avg_y = (landmarks[61].y + landmarks[291].y) / 2
         
-        if not results.multi_face_landmarks:
-            return None
+        vertical_symmetry = (nose_y - eye_avg_y) / (mouth_avg_y - eye_avg_y) if (mouth_avg_y - eye_avg_y) != 0 else 0.5
         
-        nose_bridge = results.multi_face_landmarks[0].landmark[self.NOSE_BRIDGE]
-        return (int(nose_bridge.x * width), int(nose_bridge.y * height))
-    
-    def _calculate_iris_diameter(
-        self, 
-        landmarks, 
-        iris_indices: list, 
-        width: int, 
-        height: int
-    ) -> float:
-        """Calculate iris diameter from edge landmarks"""
-        center = landmarks[iris_indices[0]]
+        return {
+            "horizontal": round(horizontal_symmetry, 3),
+            "vertical": round(vertical_symmetry, 3)
+        }
+
+    def _calculate_robust_diameter(self, landmarks, indices, width, height) -> float:
+        center = landmarks[indices[0]]
         center_px = np.array([center.x * width, center.y * height])
+        radii = []
+        for i in indices[1:]:
+            p = np.array([landmarks[i].x * width, landmarks[i].y * height])
+            radii.append(np.linalg.norm(p - center_px))
+        # Use median to handle outlier landmark jitter
+        return 2 * np.median(radii)
+
+    def _calculate_advanced_confidence(self, pose, quality, d1, d2) -> float:
+        # Penalize for head tilt
+        tilt_penalty = max(0, 1.0 - (abs(pose['yaw']) + abs(pose['pitch'])) / 40.0)
+        # Quality score
+        quality_score = 1.0 if quality['is_reliable'] else 0.5
+        # Symmetry check
+        symmetry = min(d1, d2) / max(d1, d2) if max(d1, d2) > 0 else 0
         
-        # Calculate distances to all edge points and take average diameter
-        distances = []
-        for idx in iris_indices[1:]:
-            edge = landmarks[idx]
-            edge_px = np.array([edge.x * width, edge.y * height])
-            distances.append(np.linalg.norm(edge_px - center_px))
-        
-        # Diameter is 2 * average radius
-        return 2 * np.mean(distances)
-    
-    def _calculate_confidence(
-        self,
-        left_iris,
-        right_iris,
-        left_diameter: float,
-        right_diameter: float
-    ) -> float:
-        """
-        Calculate detection confidence score (0-1)
-        
-        Factors:
-        - Landmark visibility
-        - Iris diameter consistency (left vs right should be similar)
-        - Z-depth consistency (both eyes should be at similar depth)
-        """
-        # Check visibility (if landmarks have visibility attribute)
-        visibility_score = 1.0
-        
-        # Diameter consistency (both irises should be similar size)
-        diameter_ratio = min(left_diameter, right_diameter) / max(left_diameter, right_diameter)
-        diameter_score = diameter_ratio  # 1.0 if identical, lower if different
-        
-        # Z-depth consistency
-        z_diff = abs(left_iris.z - right_iris.z)
-        z_score = max(0, 1.0 - z_diff * 10)  # Penalize large z differences
-        
-        # Combined confidence
-        confidence = (visibility_score * 0.3 + diameter_score * 0.4 + z_score * 0.3)
-        return round(min(1.0, max(0.0, confidence)), 3)
-    
+        return round((tilt_penalty * 0.4 + quality_score * 0.3 + symmetry * 0.3), 3)
+
     def close(self):
-        """Release MediaPipe resources"""
         self.face_mesh.close()

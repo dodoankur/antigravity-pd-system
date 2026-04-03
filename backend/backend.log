@@ -1,0 +1,70 @@
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1771516797.230015  351597 gl_context.cc:357] GL version: 2.1 (2.1 Metal - 90.5), renderer: Apple M3 Pro
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+W0000 00:00:1771516797.232008  351625 inference_feedback_manager.cc:114] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+/Users/Specscart/Desktop/antigravity-pd-project/backend/main.py:251: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("shutdown")
+W0000 00:00:1771516797.238149  351623 inference_feedback_manager.cc:114] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+INFO:     Started server process [25002]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+/Users/Specscart/Desktop/antigravity-pd-project/backend/venv/lib/python3.12/site-packages/google/protobuf/symbol_database.py:55: UserWarning: SymbolDatabase.GetPrototype() is deprecated. Please use message_factory.GetMessageClass() instead. SymbolDatabase.GetPrototype() will be removed soon.
+  warnings.warn('SymbolDatabase.GetPrototype() is deprecated. Please '
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     103.157.195.71:0 - "POST /api/pd/measure HTTP/1.1" 422 Unprocessable Entity
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [25002]

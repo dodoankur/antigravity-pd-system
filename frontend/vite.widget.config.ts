@@ -1,13 +1,24 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
+import { viteStaticCopy } from "vite-plugin-static-copy";
 
 /**
  * Vite configuration for building the embeddable widget
  * Outputs a single IIFE bundle that can be included via script tag
  */
 export default defineConfig({
-    plugins: [react()],
+    plugins: [
+        react(),
+        viteStaticCopy({
+            targets: [
+                {
+                    src: "node_modules/@mediapipe/face_mesh/*.{js,wasm,data,binarypb}",
+                    dest: "mediapipe/face_mesh",
+                },
+            ],
+        }),
+    ],
     resolve: {
         alias: {
             "@": resolve(__dirname, "./src"),

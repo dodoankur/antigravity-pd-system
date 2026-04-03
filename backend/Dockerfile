@@ -7,9 +7,9 @@ ENV PYTHONUNBUFFERED 1
 ENV PORT 8000
 
 # Install system dependencies for OpenCV and MediaPipe
-# - libgl1-mesa-glx and libglib2.0-0 are critical for CV2
+# - libgl1 and libglib2.0-0 are critical for CV2
 RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     libsm6 \
     libxext6 \

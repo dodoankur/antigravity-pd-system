@@ -28,6 +28,9 @@ export default defineConfig({
     optimizeDeps: {
         exclude: ["@mediapipe/face_mesh", "@mediapipe/camera_utils"],
     },
+    define: {
+        "import.meta.env.VITE_API_BASE_URL": JSON.stringify(process.env.VITE_API_BASE_URL || ""),
+    },
     server: {
         port: 3000,
         allowedHosts: [".trycloudflare.com"],

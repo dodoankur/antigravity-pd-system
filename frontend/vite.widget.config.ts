@@ -33,6 +33,7 @@ export default defineConfig({
     },
     define: {
         "process.env.NODE_ENV": JSON.stringify("production"),
+        "import.meta.env.VITE_API_BASE_URL": JSON.stringify(process.env.VITE_API_BASE_URL || ""),
     },
     build: {
         lib: {

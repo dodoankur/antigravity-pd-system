@@ -1,6 +1,12 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { FaceMesh, Results } from "@mediapipe/face_mesh";
-import { Camera } from "@mediapipe/camera_utils";
+import * as FaceMeshModule from "@mediapipe/face_mesh";
+import * as CameraModule from "@mediapipe/camera_utils";
+
+// Fix for MediaPipe bundling (handles both ESM and UMD/CommonJS exports)
+const FaceMesh = (FaceMeshModule as any).FaceMesh || FaceMeshModule;
+const Camera = (CameraModule as any).Camera || CameraModule;
+type Results = FaceMeshModule.Results;
+
 import type { PDMeasurementResult, PDMeasurerProps } from "../../types";
 import "./styles.css";
 
@@ -39,8 +45,9 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
     const [isAutoCapturing, setIsAutoCapturing] = useState(false);
 
     const videoRef = useRef<HTMLVideoElement>(null);
-    const faceMeshRef = useRef<FaceMesh | null>(null);
-    const cameraRef = useRef<Camera | null>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const faceMeshRef = useRef<any>(null);
+    const cameraRef = useRef<any>(null);
     const captureBufferRef = useRef<Blob[]>([]);
     
     // Refs to track state in callbacks
@@ -234,18 +241,18 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
             if (!isComponentMounted.current || !videoRef.current) return;
 
             // 3. Initialize FaceMesh
-            const faceMesh = new FaceMesh({
-                locateFile: (file) => `/mediapipe/face_mesh/${file}`,
+            const faceMesh = new (FaceMesh as any)({
+                locateFile: (file: string) => `/mediapipe/face_mesh/${file}`,
             });
 
             faceMesh.setOptions({
                 maxNumFaces: 1,
                 refineLandmarks: true,
-                minDetectionConfidence: 0.6,
-                minTrackingConfidence: 0.6,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5,
             });
 
-            faceMesh.onResults((results) => {
+            faceMesh.onResults((results: Results) => {
                 if (!isComponentMounted.current) return;
                 // Clear "Starting..." or "Detecting..." message on first valid frame
                 setValidation(prev => (prev.message === "Starting camera..." || prev.message === "Detecting face..." ? { isValid: false, message: "No face detected" } : prev));

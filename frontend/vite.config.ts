@@ -21,6 +21,9 @@ export default defineConfig({
             "@": resolve(__dirname, "./src"),
         },
     },
+    optimizeDeps: {
+        exclude: ["@mediapipe/face_mesh", "@mediapipe/camera_utils"],
+    },
     server: {
         port: 3000,
         allowedHosts: [".trycloudflare.com"],

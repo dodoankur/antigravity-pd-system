@@ -24,6 +24,9 @@ export default defineConfig({
             "@": resolve(__dirname, "./src"),
         },
     },
+    optimizeDeps: {
+        exclude: ["@mediapipe/face_mesh", "@mediapipe/camera_utils"],
+    },
     define: {
         "process.env.NODE_ENV": JSON.stringify("production"),
     },

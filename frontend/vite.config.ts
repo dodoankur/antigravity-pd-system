@@ -13,6 +13,10 @@ export default defineConfig({
                     src: "node_modules/@mediapipe/face_mesh/*.{js,wasm,data,binarypb}",
                     dest: "mediapipe/face_mesh",
                 },
+                {
+                    src: "node_modules/@mediapipe/camera_utils/*.js",
+                    dest: "mediapipe/camera_utils",
+                },
             ],
         }),
     ],

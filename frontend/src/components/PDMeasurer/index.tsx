@@ -1,14 +1,13 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import * as FaceMeshModule from "@mediapipe/face_mesh";
-import * as CameraModule from "@mediapipe/camera_utils";
-
-// Fix for MediaPipe bundling (handles both ESM and UMD/CommonJS exports)
-const FaceMesh = (FaceMeshModule as any).FaceMesh || FaceMeshModule;
-const Camera = (CameraModule as any).Camera || CameraModule;
-type Results = FaceMeshModule.Results;
-
+// Type-only imports to avoid bundling issues
+import type { Results } from "@mediapipe/face_mesh";
 import type { PDMeasurementResult, PDMeasurerProps } from "../../types";
 import "./styles.css";
+
+// Access MediaPipe via Global Script Tags (Loaded in index.html)
+const FaceMesh = (window as any).FaceMesh;
+const Camera = (window as any).Camera;
+
 
 // --- SVG Icons ---
 const UploadIcon = () => (

@@ -45,7 +45,6 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
     const [isAutoCapturing, setIsAutoCapturing] = useState(false);
 
     const videoRef = useRef<HTMLVideoElement>(null);
-    const canvasRef = useRef<HTMLCanvasElement>(null);
     const faceMeshRef = useRef<any>(null);
     const cameraRef = useRef<any>(null);
     const captureBufferRef = useRef<Blob[]>([]);

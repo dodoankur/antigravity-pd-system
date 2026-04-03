@@ -13,7 +13,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <h1>PD Measurement Tool</h1>
             <p className="demo-subtitle">Measure your pupil distance for accurate eyewear fitting</p>
             <PDMeasurer
-                apiEndpoint="/api/pd/measure"
                 onMeasurement={(result) => {
                     console.log("Measurement result:", result);
                 }}

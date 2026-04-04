@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# Hugging Face Direct Push Script
+# This uploads your backend directly to your Hugging Face Space, bypassing GitHub.
+
+echo "🚀 Starting Hugging Face Direct Push..."
+
+# 1. Configuration
+read -p "Enter your Hugging Face Username (e.g. ankurpd): " HF_USERNAME
+read -p "Enter your Space Name (e.g. pd-measurement-api): " HF_SPACE_NAME
+read -p "Enter your HF Access Token (Write permission): " HF_TOKEN
+
+HF_REMOTE="https://$HF_USERNAME:$HF_TOKEN@huggingface.co/spaces/$HF_USERNAME/$HF_SPACE_NAME"
+
+# 2. Preparation
+echo "📁 Preparing backend folder for push..."
+cd backend
+
+# Initialize a temporary git repo if not exists
+if [ ! -d ".git" ]; then
+    git init -b main
+fi
+
+# Add the Hugging Face remote
+git remote remove hf 2>/dev/null
+git remote add hf "$HF_REMOTE"
+
+# 3. Deployment
+echo "📦 Committing and Pushing to Hugging Face..."
+git add .
+git commit -m "Deployment: Direct Push to Hugging Face" 2>/dev/null || echo "No changes to commit"
+
+# Push to Hugging Face (forced to ensure the Space matches our code)
+git push hf main --force
+
+echo ""
+echo "✅ Push complete!"
+echo "📍 View your Space here: https://huggingface.co/spaces/$HF_USERNAME/$HF_SPACE_NAME"
+echo "⏳ Wait 1-2 minutes for the Docker build to finish."
+echo ""
+echo "🔗 Once 'Running', your API URL will be: hf.space URL"

@@ -6,9 +6,30 @@
 echo "🚀 Starting Hugging Face Direct Push..."
 
 # 1. Configuration
-read -p "Enter your Hugging Face Username (e.g. ankurpd): " HF_USERNAME
-read -p "Enter your Space Name (e.g. pd-measurement-api): " HF_SPACE_NAME
-read -p "Enter your HF Access Token (Write permission): " HF_TOKEN
+ENV_FILE="../.env.hf"
+if [ -f "$ENV_FILE" ]; then
+    echo "🔑 Loading credentials from .env.hf..."
+    source "$ENV_FILE"
+fi
+
+if [ -z "$HF_USERNAME" ]; then
+    read -p "Enter your Hugging Face Username (e.g. ankurpd): " HF_USERNAME
+fi
+if [ -z "$HF_SPACE_NAME" ]; then
+    read -p "Enter your Space Name (e.g. pd-measurement-api): " HF_SPACE_NAME
+fi
+if [ -z "$HF_TOKEN" ]; then
+    read -p "Enter your HF Access Token (Write permission): " HF_TOKEN
+fi
+
+# Save credentials if they were not already in the file
+if [ ! -f "$ENV_FILE" ]; then
+    echo "Saving credentials to .env.hf for next time..."
+    echo "HF_USERNAME=\"$HF_USERNAME\"" > "$ENV_FILE"
+    echo "HF_SPACE_NAME=\"$HF_SPACE_NAME\"" >> "$ENV_FILE"
+    echo "HF_TOKEN=\"$HF_TOKEN\"" >> "$ENV_FILE"
+    chmod 600 "$ENV_FILE"
+fi
 
 HF_REMOTE="https://$HF_USERNAME:$HF_TOKEN@huggingface.co/spaces/$HF_USERNAME/$HF_SPACE_NAME"
 

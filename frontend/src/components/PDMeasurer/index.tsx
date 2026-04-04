@@ -142,42 +142,30 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
 
     const handleMultiFrameSubmit = async () => {
         setStep("processing");
-        const results: number[] = [];
 
         try {
-            for (const blob of captureBufferRef.current) {
-                const formData = new FormData();
-                formData.append("image", blob, "capture.jpg");
-                formData.append("reference_type", "none");
+            const formData = new FormData();
+            captureBufferRef.current.forEach((blob) => {
+                formData.append("images", blob, "capture.jpg");
+            });
+            formData.append("reference_type", "none");
 
-                const response = await fetch(apiEndpoint, { method: "POST", body: formData });
-                if (response.ok) {
-                    const data: PDMeasurementResult = await response.json();
-                    results.push(data.overall_pd_mm);
-                } else {
-                    const errData = await response.json();
-                    throw new Error(errData.detail || "Server rejected photo");
-                }
-            }
+            // Use the batch endpoint for multi-frame stability
+            const batchEndpoint = apiEndpoint.includes("/api/pd/measure") 
+                ? apiEndpoint.replace("/api/pd/measure", "/api/pd/measure-batch")
+                : `${apiEndpoint.replace(/\/$/, "")}/batch`;
 
-            if (results.length === 0) throw new Error("Could not process frames");
-            results.sort((a, b) => a - b);
-            const medianPD = results[Math.floor(results.length / 2)];
-
-            const finalResult: any = {
-                overall_pd_mm: medianPD,
-                left_pd_mm: medianPD / 2,
-                right_pd_mm: medianPD / 2,
-                method: "iris_estimation",
-                model_used: "Multi-Frame Median Logic (10 frames)",
-                confidence_score: 0.95,
-                error_margin: { value_mm: 1.0, percentage: 1.5, confidence_score: 0.95 },
-                disclaimer: "Calculated using 10-frame median filtering for highest stability."
-            };
+            const response = await fetch(batchEndpoint, { method: "POST", body: formData });
             
-            setResult(finalResult);
-            if (onMeasurement) onMeasurement(finalResult);
-            setStep("results");
+            if (response.ok) {
+                const finalResult: PDMeasurementResult = await response.json();
+                setResult(finalResult);
+                if (onMeasurement) onMeasurement(finalResult);
+                setStep("results");
+            } else {
+                const errData = await response.json();
+                throw new Error(errData.detail || "Batch processing failed. Please stay still.");
+            }
         } catch (err: any) {
             const errorMessage = err.message || "Quality check failed. Please look straight and try again.";
             setError(errorMessage);

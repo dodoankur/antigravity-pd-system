@@ -6,7 +6,8 @@
 echo "🚀 Starting Hugging Face Direct Push..."
 
 # 1. Configuration
-ENV_FILE="../.env.hf"
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+ENV_FILE="$SCRIPT_DIR/.env.hf"
 if [ -f "$ENV_FILE" ]; then
     echo "🔑 Loading credentials from .env.hf..."
     source "$ENV_FILE"
@@ -23,7 +24,7 @@ if [ -z "$HF_TOKEN" ]; then
 fi
 
 # Save credentials if they were not already in the file
-if [ ! -f "$ENV_FILE" ]; then
+if [ ! -f "$ENV_FILE" ] && [ ! -z "$HF_TOKEN" ]; then
     echo "Saving credentials to .env.hf for next time..."
     echo "HF_USERNAME=\"$HF_USERNAME\"" > "$ENV_FILE"
     echo "HF_SPACE_NAME=\"$HF_SPACE_NAME\"" >> "$ENV_FILE"

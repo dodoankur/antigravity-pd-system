@@ -42,6 +42,7 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
     const [error, setError] = useState<string | null>(null);
     const [validation, setValidation] = useState<ValidationState>({ isValid: false, message: "Initializing camera..." });
     const [isAutoCapturing, setIsAutoCapturing] = useState(false);
+    const [captureProgress, setCaptureProgress] = useState(0); // 0 to 10
 
     const videoRef = useRef<HTMLVideoElement>(null);
     const faceMeshRef = useRef<any>(null);
@@ -116,9 +117,11 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
 
     const triggerAutoCapture = async () => {
         setIsAutoCapturing(true);
+        setCaptureProgress(0);
         captureBufferRef.current = [];
 
-        for (let i = 0; i < 10; i++) {
+        const totalFrames = 10;
+        for (let i = 0; i < totalFrames; i++) {
             if (videoRef.current) {
                 const canvas = document.createElement("canvas");
                 canvas.width = videoRef.current.videoWidth;
@@ -132,8 +135,10 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
                         resolve();
                     }, "image/jpeg", 0.9);
                 });
+                setCaptureProgress(i + 1);
             }
-            await new Promise(r => setTimeout(r, 100));
+            // Faster sampling for better "continuous" feel (75ms instead of 100ms)
+            await new Promise(r => setTimeout(r, 75));
         }
 
         stopCamera();
@@ -145,12 +150,24 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
 
         try {
             const formData = new FormData();
-            captureBufferRef.current.forEach((blob) => {
-                formData.append("images", blob, "capture.jpg");
-            });
+            
+            // 1. If we have a buffer (Camera mode), use it
+            if (captureBufferRef.current.length > 0) {
+                captureBufferRef.current.forEach((blob, idx) => {
+                    formData.append("images", blob, `frame_${idx}.jpg`);
+                });
+            } 
+            // 2. If no buffer but we have an uploaded file (Upload mode)
+            else if (imageFile) {
+                formData.append("images", imageFile, imageFile.name);
+            }
+            else {
+                throw new Error("No image data to process.");
+            }
+
             formData.append("reference_type", "none");
 
-            // Use the batch endpoint for multi-frame stability
+            // Use the batch endpoint for both single and multi-frame consistency
             const batchEndpoint = apiEndpoint.includes("/api/pd/measure") 
                 ? apiEndpoint.replace("/api/pd/measure", "/api/pd/measure-batch")
                 : `${apiEndpoint.replace(/\/$/, "")}/batch`;
@@ -164,7 +181,7 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
                 setStep("results");
             } else {
                 const errData = await response.json();
-                throw new Error(errData.detail || "Batch processing failed. Please stay still.");
+                throw new Error(errData.detail || "Processing failed. Please stay still.");
             }
         } catch (err: any) {
             const errorMessage = err.message || "Quality check failed. Please look straight and try again.";
@@ -172,7 +189,8 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
             if (onError) onError(errorMessage);
             setStep("capture");
             setIsAutoCapturing(false);
-            startCamera();
+            setCaptureProgress(0);
+            if (captureMode === "camera") startCamera();
         }
     };
 
@@ -332,6 +350,7 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
         setImagePreview(null);
         setError(null);
         setIsAutoCapturing(false);
+        setCaptureProgress(0);
         setCaptureMode("camera");
         startCamera();
     };
@@ -371,9 +390,19 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
                                         <div className={`pd-measurer__guide-box ${validation.isValid ? "pd-measurer__guide-box--active" : ""}`} />
                                         <div className="pd-measurer__instruction-box">
                                             <p className={`pd-measurer__instruction-text ${validation.isValid ? "pd-measurer__instruction-text--success" : ""}`}>
-                                                {validation.message}
+                                                {isAutoCapturing ? `Sampling Data: ${captureProgress}/10` : validation.message}
                                             </p>
+                                            {isAutoCapturing && (
+                                                <div className="pd-measurer__progress-container">
+                                                    <div className="pd-measurer__progress-bar" style={{ width: `${(captureProgress / 10) * 100}%` }} />
+                                                </div>
+                                            )}
                                         </div>
+                                        {isAutoCapturing && (
+                                            <div className="pd-measurer__sampling-badge">
+                                                LIVE SAMPLING
+                                            </div>
+                                        )}
                                     </div>
                                 </>
                             )}

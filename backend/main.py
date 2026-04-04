@@ -106,17 +106,24 @@ async def measure_pd_batch(
             detail=f"Failed to process any images in the batch. Errors: {'; '.join(errors[:3])}"
         )
 
-    # Calculate median of the overall_pd_mm
-    pd_values = sorted([r.overall_pd_mm for r in results])
-    median_pd = pd_values[len(pd_values) // 2]
+    # Calculate medians separately for best stability and to handle potential asymmetry
+    overall_vals = sorted([r.overall_pd_mm for r in results])
+    left_vals = sorted([r.left_pd_mm for r in results])
+    right_vals = sorted([r.right_pd_mm for r in results])
     
-    # Pick the representative result (the one closest to median or just the first successful one with updated median)
-    final_result = results[0]
+    idx = len(results) // 2
+    median_pd = overall_vals[idx]
+    median_left = left_vals[idx]
+    median_right = right_vals[idx]
+    
+    # Pick the representative result (the one with the highest confidence or just the first)
+    final_result = sorted(results, key=lambda x: x.confidence_score, reverse=True)[0]
+    
     final_result.overall_pd_mm = median_pd
-    final_result.left_pd_mm = median_pd / 2
-    final_result.right_pd_mm = median_pd / 2
-    final_result.model_used = f"Batch Processing Median (from {len(results)} frames)"
-    final_result.disclaimer = f"Calculated using {len(results)}-frame batch for maximum stability. {final_result.disclaimer}"
+    final_result.left_pd_mm = median_left
+    final_result.right_pd_mm = median_right
+    final_result.model_used = f"Batch Processing Median ({len(results)}/{len(images)} frames)"
+    final_result.disclaimer = f"✅ Calculated using {len(results)}-frame batch for maximum stability. {final_result.disclaimer}"
 
     return final_result
 

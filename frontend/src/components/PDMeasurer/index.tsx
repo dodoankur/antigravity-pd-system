@@ -39,7 +39,7 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({
     onError, 
     className = "", 
     primaryColor, 
-    mediapipeBasePath = "https://www.gstatic.com/mediapipe/solutions/face_mesh/0.4.1633559619" 
+    mediapipeBasePath = "https://unpkg.com/@mediapipe/face_mesh@0.4.1633559619" 
 }) => {
     const [step, setStep] = useState<Step>("capture");
     const [captureMode, setCaptureMode] = useState<CaptureMode>("camera");
@@ -302,7 +302,7 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({
 
                 // Test if the library can actually load its assets
                 // We don't want to wait for the first frame to discover the CDN is down
-                const isCDN = currentBasePath.includes("jsdelivr.net") || currentBasePath.includes("gstatic.com");
+                const isCDN = currentBasePath.includes("jsdelivr.net") || currentBasePath.includes("gstatic.com") || currentBasePath.includes("unpkg.com");
                 
                 if (isCDN) {
                     console.log("Checking CDN availability...");

@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { PDMeasurer } from "./components/PDMeasurer";
-import "./components/PDMeasurer/styles.css";
+import componentStyles from "./components/PDMeasurer/styles.css?inline";
 
 /**
  * Embeddable Widget Entry Point
@@ -75,7 +75,7 @@ function injectStyles(shadowRoot: ShadowRoot): void {
 
     // Import the compiled styles
     const compiledStyles = document.createElement("style");
-    compiledStyles.textContent = (window as unknown as { __PD_WIDGET_STYLES__?: string }).__PD_WIDGET_STYLES__ || "";
+    compiledStyles.textContent = componentStyles;
 
     shadowRoot.appendChild(styleElement);
     shadowRoot.appendChild(compiledStyles);

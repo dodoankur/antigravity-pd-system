@@ -19,6 +19,7 @@ class IrisData:
     left_iris_diameter_px: float
     right_iris_diameter_px: float
     face_width_px: float
+    nose_bridge_x: float
     confidence: float
     # Advanced metadata
     head_pose: Dict[str, float]  # pitch, yaw, roll
@@ -102,23 +103,22 @@ class FaceDetectionService:
         camera_matrix = np.array([[width, 0, width/2], [0, width, height/2], [0, 0, 1]], dtype="double")
         dist_coeffs = np.zeros((4,1)) # Assuming no lens distortion
         
-        (success, rotation_vector, translation_vector) = cv2.solvePnP(model_points, image_points, camera_matrix, dist_coeffs, flags=cv2.SOLVEPNP_ITERATIVE)
+        try:
+            (success, rotation_vector, translation_vector) = cv2.solvePnP(model_points, image_points, camera_matrix, dist_coeffs, flags=cv2.SOLVEPNP_ITERATIVE)
+            if not success:
+                return {"pitch": 0.0, "yaw": 0.0, "roll": 0.0}
+        except cv2.error:
+            return {"pitch": 0.0, "yaw": 0.0, "roll": 0.0}
         
         # Convert to Euler angles
         rmat, _ = cv2.Rodrigues(rotation_vector)
-        # Note: cv2.decomposeProjectionMatrix returns a tuple with varying lengths in some OpenCV versions.
-        # It typically returns (cameraMatrix, rotMatrix, transVec, rotMatrixX, rotMatrixY, rotMatrixZ)
         proj_matrix = np.hstack((rmat, translation_vector))
         decomp = cv2.decomposeProjectionMatrix(proj_matrix)
-        angles = decomp[1] # rotMatrix or similar depending on version, but typically we want Euler angles
         
-        # Actually, decomposeProjectionMatrix returns 7 values in modern OpenCV:
-        # (cameraMatrix, rotMatrix, transVec, rotMatrixX, rotMatrixY, rotMatrixZ, eulerAngles)
         if len(decomp) >= 7:
             euler_angles = decomp[6]
         else:
-            # Fallback/Older version handling
-            euler_angles = decomp[1] # Placeholder
+            euler_angles = decomp[1] if decomp[1].size == 3 else [0, 0, 0] # Avoid crashing on unexpected fallback size
             
         return {
             "pitch": float(euler_angles[0][0]),
@@ -141,6 +141,9 @@ class FaceDetectionService:
         
         # Head Pose for perspective correction
         pose = self.estimate_head_pose(landmarks, width, height)
+        
+        nose_bridge = landmarks[168]
+        nose_bridge_x = nose_bridge.x * width
         
         # Iris Detection
         left_iris = landmarks[self.LEFT_IRIS_CENTER]
@@ -172,6 +175,7 @@ class FaceDetectionService:
             left_iris_diameter_px=left_diameter,
             right_iris_diameter_px=right_diameter,
             face_width_px=canthus_dist_px, # Used eye width for scaling anchor
+            nose_bridge_x=nose_bridge_x,
             confidence=confidence,
             head_pose=pose,
             quality_score=quality['blur'],
@@ -212,7 +216,13 @@ class FaceDetectionService:
 
     def _calculate_advanced_confidence(self, pose, quality, d1, d2) -> float:
         # Penalize for head tilt
-        tilt_penalty = max(0, 1.0 - (abs(pose['yaw']) + abs(pose['pitch'])) / 40.0)
+        adjusted_pitch = pose['pitch']
+        if adjusted_pitch > 90:
+            adjusted_pitch -= 180
+        elif adjusted_pitch < -90:
+            adjusted_pitch += 180
+            
+        tilt_penalty = max(0, 1.0 - (abs(pose['yaw']) + abs(adjusted_pitch)) / 40.0)
         # Quality score
         quality_score = 1.0 if quality['is_reliable'] else 0.5
         # Symmetry check

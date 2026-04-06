@@ -59,13 +59,19 @@ class PDCalculatorService:
         pd_pixels = np.linalg.norm(left_px - right_px)
         
         # Apply perspective compensation to PD distance
-        # If head is turned, actual PD is scaled by 1/cos(yaw)
-        corrected_pd_mm = (pd_pixels / np.cos(yaw_rad)) * mm_per_pixel
+        # NO perspective compensation here, mm_per_pixel is already corrected
+        corrected_pd_mm = pd_pixels * mm_per_pixel
         
-        # 3. Monocular PD (Split)
-        # Using 50/50 split for now
-        left_pd_mm = corrected_pd_mm / 2
-        right_pd_mm = corrected_pd_mm / 2
+        # 3. Monocular PD (True split using nose bridge)
+        left_iris_center_x = left_px[0]
+        right_iris_center_x = right_px[0]
+        nose_x = iris_data.nose_bridge_x
+        
+        left_pd_px = abs(left_iris_center_x - nose_x)
+        right_pd_px = abs(right_iris_center_x - nose_x)
+        
+        left_pd_mm = left_pd_px * mm_per_pixel
+        right_pd_mm = right_pd_px * mm_per_pixel
         
         # 4. Accuracy & Confidence
         conf = iris_data.confidence
@@ -92,14 +98,16 @@ class PDCalculatorService:
         mm_per_pixel = ref.scale_factor
         pd_px = np.linalg.norm(np.array(iris_data.left_iris_pixel) - np.array(iris_data.right_iris_pixel))
         
-        # Even with reference, correct for head tilt
-        yaw_rad = np.deg2rad(iris_data.head_pose['yaw'])
-        corrected_pd_mm = (pd_px / np.cos(yaw_rad)) * mm_per_pixel
+        # No need to double correct for head tilt. Reference anchor captures mm_per_pixel directly on the frontal plane
+        corrected_pd_mm = pd_px * mm_per_pixel
+        
+        left_pd_px = abs(iris_data.left_iris_pixel[0] - iris_data.nose_bridge_x)
+        right_pd_px = abs(iris_data.right_iris_pixel[0] - iris_data.nose_bridge_x)
         
         return PDResult(
             overall_pd_mm=round(corrected_pd_mm, 1),
-            left_pd_mm=round(corrected_pd_mm/2, 1),
-            right_pd_mm=round(corrected_pd_mm/2, 1),
+            left_pd_mm=round(left_pd_px * mm_per_pixel, 1),
+            right_pd_mm=round(right_pd_px * mm_per_pixel, 1),
             method=MeasurementMethod.REFERENCE_OBJECT,
             model_used="Ref-Object + Tilt Compensation",
             confidence_score=iris_data.confidence,

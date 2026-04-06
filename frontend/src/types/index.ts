@@ -56,4 +56,6 @@ export interface PDMeasurerProps {
     className?: string;
     /** Primary color theme */
     primaryColor?: string;
+    /** Base path for MediaPipe Face Mesh files (default: /mediapipe/face_mesh) */
+    mediapipeBasePath?: string;
 }

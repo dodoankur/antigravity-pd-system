@@ -316,5 +316,74 @@
     z-index: 10;
 }
 
+.pd-measurer__ref-selector-wrap {
+    margin-top: 16px;
+    background: var(--pd-bg);
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--pd-border);
+    width: 100%;
+    max-width: 250px;
+}
+
+.pd-measurer__ref-selector-wrap label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--pd-text-muted);
+    margin-bottom: 4px;
+}
+
+.pd-measurer__ref-select {
+    width: 100%;
+    padding: 6px;
+    border-radius: 4px;
+    border: 1px solid var(--pd-border);
+    font-size: 0.875rem;
+}
+
+.pd-measurer__ref-floating-selector {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    pointer-events: auto;
+}
+
+.pd-measurer__ref-select-mini {
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    backdrop-filter: blur(4px);
+}
+
+.pd-measurer__stats {
+    display: flex;
+    justify-content: space-around;
+    padding: 12px;
+    background: var(--pd-bg-secondary);
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.pd-measurer__stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.pd-measurer__stat-label {
+    font-size: 0.75rem;
+    color: var(--pd-text-muted);
+    margin-bottom: 2px;
+}
+
+.pd-measurer__stat-value {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--pd-text);
+}
+
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes pulse-soft { 0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; } }

@@ -104,7 +104,7 @@ class ReferenceDetectionService:
                 # Get bounding rectangle
                 rect = cv2.minAreaRect(contour)
                 box = cv2.boxPoints(rect)
-                box = np.int_(box)
+                box = box.astype(np.int32)
                 
                 # Calculate aspect ratio
                 width = rect[1][0]

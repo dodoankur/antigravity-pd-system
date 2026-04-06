@@ -5,10 +5,16 @@ Provides endpoints for measuring pupil distance from face images
 import io
 import cv2
 import numpy as np
+import statistics
 from typing import List
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
+from contextlib import asynccontextmanager
+
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from models.schemas import (
     ReferenceType, 
@@ -26,28 +32,48 @@ from services.pd_calculator import PDCalculatorService
 # API Version
 API_VERSION = "1.0.0"
 
+# Initialize services
+face_detection_service = None
+reference_detection_service = None
+pd_calculator_service = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global face_detection_service, reference_detection_service, pd_calculator_service
+    face_detection_service = FaceDetectionService()
+    reference_detection_service = ReferenceDetectionService()
+    pd_calculator_service = PDCalculatorService()
+    yield
+    if face_detection_service:
+        face_detection_service.close()
+
 # Initialize FastAPI app
 app = FastAPI(
     title="PD Measurement API",
     description="API for measuring pupil distance from face images",
     version=API_VERSION,
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
+
+# Rate Limiter
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Configure CORS for frontend integration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=[
+        "https://your-frontend.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:5173"
+    ],
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
-
-# Initialize services
-face_detection_service = FaceDetectionService()
-reference_detection_service = ReferenceDetectionService()
-pd_calculator_service = PDCalculatorService()
 
 
 @app.get("/", response_model=HealthResponse)
@@ -63,7 +89,9 @@ async def health_check():
 
 
 @app.post("/api/pd/measure", response_model=PDMeasurementResult)
+@limiter.limit("10/minute")
 async def measure_pd(
+    request: Request,
     image: UploadFile = File(..., description="Face image with open eyes"),
     reference_type: str = Form(default="none", description="Type of reference object in image")
 ):
@@ -78,7 +106,9 @@ async def measure_pd(
 
 
 @app.post("/api/pd/measure-batch", response_model=PDMeasurementResult)
+@limiter.limit("10/minute")
 async def measure_pd_batch(
+    request: Request,
     images: List[UploadFile] = File(..., description="List of face images for median calculation"),
     reference_type: str = Form(default="none", description="Type of reference object in image")
 ):
@@ -111,10 +141,9 @@ async def measure_pd_batch(
     left_vals = sorted([r.left_pd_mm for r in results])
     right_vals = sorted([r.right_pd_mm for r in results])
     
-    idx = len(results) // 2
-    median_pd = overall_vals[idx]
-    median_left = left_vals[idx]
-    median_right = right_vals[idx]
+    median_pd = round(statistics.median(overall_vals), 1)
+    median_left = round(statistics.median(left_vals), 1)
+    median_right = round(statistics.median(right_vals), 1)
     
     # Pick the representative result (the one with the highest confidence or just the first)
     final_result = sorted(results, key=lambda x: x.confidence_score, reverse=True)[0]
@@ -130,16 +159,30 @@ async def measure_pd_batch(
 
 async def _process_single_image(image: UploadFile, reference_type: str) -> PDMeasurementResult:
     """Helper method to process a single image and return PD result"""
-    # Validate image type
-    if not image.content_type or not image.content_type.startswith("image/"):
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid file type. Please upload an image file (JPEG, PNG, WebP)."
-        )
+    MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
+    ALLOWED_MAGIC_BYTES = {
+        b'\xff\xd8\xff': "image/jpeg",
+        b'\x89PNG': "image/png",
+    }
     
     try:
-        # Read and convert image
         contents = await image.read()
+        if len(contents) > MAX_IMAGE_SIZE:
+            raise HTTPException(status_code=413, detail="Image exceeds 10MB limit")
+            
+        is_valid_format = False
+        for magic in ALLOWED_MAGIC_BYTES:
+            if contents[:len(magic)] == magic:
+                is_valid_format = True
+                break
+                
+        if not is_valid_format:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid or unsupported image format. Only JPEG and PNG are accepted."
+            )
+
+        # Read and convert image
         pil_image = Image.open(io.BytesIO(contents))
         
         # Convert to RGB if necessary (handle RGBA, etc.)
@@ -313,12 +356,6 @@ async def get_reference_types():
         ]
     }
 
-
-# Cleanup on shutdown
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup resources on shutdown"""
-    face_detection_service.close()
 
 
 if __name__ == "__main__":

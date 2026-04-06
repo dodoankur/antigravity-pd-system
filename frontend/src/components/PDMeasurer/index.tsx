@@ -33,9 +33,17 @@ interface ValidationState {
 
 const DEFAULT_API_URL = `${import.meta.env.VITE_API_BASE_URL || ""}/api/pd/measure`.replace(/^\/\//, "/");
 
-export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_API_URL, onMeasurement, onError, className = "" }) => {
+export const PDMeasurer: React.FC<PDMeasurerProps> = ({ 
+    apiEndpoint = DEFAULT_API_URL, 
+    onMeasurement, 
+    onError, 
+    className = "", 
+    primaryColor, 
+    mediapipeBasePath = "/mediapipe/face_mesh" 
+}) => {
     const [step, setStep] = useState<Step>("capture");
     const [captureMode, setCaptureMode] = useState<CaptureMode>("camera");
+    const [referenceType, setReferenceType] = useState<string>("none");
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [result, setResult] = useState<PDMeasurementResult | null>(null);
@@ -44,18 +52,148 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
     const [isAutoCapturing, setIsAutoCapturing] = useState(false);
     const [captureProgress, setCaptureProgress] = useState(0); // 0 to 10
 
+    const containerRef = useRef<HTMLDivElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const faceMeshRef = useRef<any>(null);
     const cameraRef = useRef<any>(null);
     const captureBufferRef = useRef<Blob[]>([]);
-    
-    // Refs to track state in callbacks
+    const prevPreviewRef = useRef<string | null>(null);
+    const captureAbortRef = useRef<AbortController | null>(null);
+    const startCameraRef = useRef<() => Promise<void>>();
+    const isComponentMounted = useRef(true);
+    const initializationLock = useRef(false);
     const stateRef = useRef({ isAutoCapturing, step, captureMode });
+    
+    // Apply primary color
+    useEffect(() => {
+        if (primaryColor && containerRef.current) {
+            containerRef.current.style.setProperty("--pd-primary", primaryColor);
+        }
+    }, [primaryColor]);
+    
     useEffect(() => {
         stateRef.current = { isAutoCapturing, step, captureMode };
     }, [isAutoCapturing, step, captureMode]);
 
-    // --- Strict MediaPipe Results Handling ---
+    // --- Core Logic Functions (Ordered for Dependency Management) ---
+
+    const stopCamera = useCallback(async () => {
+        console.log("Stopping camera resources...");
+        
+        if (cameraRef.current) {
+            try {
+                await cameraRef.current.stop();
+            } catch (e) {
+                console.error("Error stopping camera utility:", e);
+            }
+            cameraRef.current = null;
+        }
+
+        if (faceMeshRef.current) {
+            try {
+                await faceMeshRef.current.close();
+            } catch (e) {
+                console.error("Error closing FaceMesh:", e);
+            }
+            faceMeshRef.current = null;
+        }
+
+        if (videoRef.current && videoRef.current.srcObject) {
+            const stream = videoRef.current.srcObject as MediaStream;
+            stream.getTracks().forEach(track => {
+                track.stop();
+                console.log(`Track ${track.label} released.`);
+            });
+            videoRef.current.srcObject = null;
+        }
+    }, []);
+
+    const handleMultiFrameSubmit = useCallback(async () => {
+        setStep("processing");
+
+        try {
+            const formData = new FormData();
+            
+            // 1. If we have a buffer (Camera mode), use it
+            if (captureBufferRef.current.length > 0) {
+                captureBufferRef.current.forEach((blob, idx) => {
+                    formData.append("images", blob, `frame_${idx}.jpg`);
+                });
+            } 
+            // 2. If no buffer but we have an uploaded file (Upload mode)
+            else if (imageFile) {
+                formData.append("images", imageFile, imageFile.name);
+            }
+            else {
+                throw new Error("No image data to process.");
+            }
+
+            formData.append("reference_type", referenceType);
+
+            // Use the batch endpoint for both single and multi-frame consistency
+            const batchEndpoint = apiEndpoint.includes("/api/pd/measure") 
+                ? apiEndpoint.replace("/api/pd/measure", "/api/pd/measure-batch")
+                : `${apiEndpoint.replace(/\/$/, "")}/batch`;
+
+            const response = await fetch(batchEndpoint, { method: "POST", body: formData });
+            
+            if (response.ok) {
+                const finalResult: PDMeasurementResult = await response.json();
+                setResult(finalResult);
+                if (onMeasurement) onMeasurement(finalResult);
+                setStep("results");
+            } else {
+                const errData = await response.json();
+                throw new Error(errData.detail || "Processing failed. Please stay still.");
+            }
+        } catch (err: any) {
+            const errorMessage = err.message || "Quality check failed. Please look straight and try again.";
+            setError(errorMessage);
+            if (onError) onError(errorMessage);
+            setStep("capture");
+            setIsAutoCapturing(false);
+            setCaptureProgress(0);
+            if (captureMode === "camera") startCameraRef.current?.();
+        }
+    }, [apiEndpoint, captureMode, imageFile, onMeasurement, onError, referenceType]);
+
+    const triggerAutoCapture = useCallback(async () => {
+        const abort = new AbortController();
+        captureAbortRef.current = abort;
+        
+        setIsAutoCapturing(true);
+        setCaptureProgress(0);
+        captureBufferRef.current = [];
+
+        const totalFrames = 10;
+        for (let i = 0; i < totalFrames; i++) {
+            if (abort.signal.aborted || !isComponentMounted.current) return;
+
+            if (videoRef.current) {
+                const canvas = document.createElement("canvas");
+                canvas.width = videoRef.current.videoWidth;
+                canvas.height = videoRef.current.videoHeight;
+                const ctx = canvas.getContext("2d");
+                ctx?.drawImage(videoRef.current, 0, 0);
+                
+                await new Promise<void>((resolve) => {
+                    canvas.toBlob((blob) => {
+                        if (blob) captureBufferRef.current.push(blob);
+                        resolve();
+                    }, "image/jpeg", 0.9);
+                });
+                setCaptureProgress(i + 1);
+            }
+            // Faster sampling for better "continuous" feel (75ms instead of 100ms)
+            await new Promise(r => setTimeout(r, 75));
+        }
+
+        if (!abort.signal.aborted) {
+            stopCamera();
+            handleMultiFrameSubmit();
+        }
+    }, [handleMultiFrameSubmit, stopCamera]);
+
     const onResults = useCallback((results: Results) => {
         const { isAutoCapturing: currentAutoCapture, step: currentStep, captureMode: currentMode } = stateRef.current;
 
@@ -113,121 +251,7 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
         if (!currentAutoCapture && currentStep === "capture" && currentMode === "camera") {
             triggerAutoCapture();
         }
-    }, []);
-
-    const triggerAutoCapture = async () => {
-        setIsAutoCapturing(true);
-        setCaptureProgress(0);
-        captureBufferRef.current = [];
-
-        const totalFrames = 10;
-        for (let i = 0; i < totalFrames; i++) {
-            if (videoRef.current) {
-                const canvas = document.createElement("canvas");
-                canvas.width = videoRef.current.videoWidth;
-                canvas.height = videoRef.current.videoHeight;
-                const ctx = canvas.getContext("2d");
-                ctx?.drawImage(videoRef.current, 0, 0);
-                
-                await new Promise<void>((resolve) => {
-                    canvas.toBlob((blob) => {
-                        if (blob) captureBufferRef.current.push(blob);
-                        resolve();
-                    }, "image/jpeg", 0.9);
-                });
-                setCaptureProgress(i + 1);
-            }
-            // Faster sampling for better "continuous" feel (75ms instead of 100ms)
-            await new Promise(r => setTimeout(r, 75));
-        }
-
-        stopCamera();
-        handleMultiFrameSubmit();
-    };
-
-    const handleMultiFrameSubmit = async () => {
-        setStep("processing");
-
-        try {
-            const formData = new FormData();
-            
-            // 1. If we have a buffer (Camera mode), use it
-            if (captureBufferRef.current.length > 0) {
-                captureBufferRef.current.forEach((blob, idx) => {
-                    formData.append("images", blob, `frame_${idx}.jpg`);
-                });
-            } 
-            // 2. If no buffer but we have an uploaded file (Upload mode)
-            else if (imageFile) {
-                formData.append("images", imageFile, imageFile.name);
-            }
-            else {
-                throw new Error("No image data to process.");
-            }
-
-            formData.append("reference_type", "none");
-
-            // Use the batch endpoint for both single and multi-frame consistency
-            const batchEndpoint = apiEndpoint.includes("/api/pd/measure") 
-                ? apiEndpoint.replace("/api/pd/measure", "/api/pd/measure-batch")
-                : `${apiEndpoint.replace(/\/$/, "")}/batch`;
-
-            const response = await fetch(batchEndpoint, { method: "POST", body: formData });
-            
-            if (response.ok) {
-                const finalResult: PDMeasurementResult = await response.json();
-                setResult(finalResult);
-                if (onMeasurement) onMeasurement(finalResult);
-                setStep("results");
-            } else {
-                const errData = await response.json();
-                throw new Error(errData.detail || "Processing failed. Please stay still.");
-            }
-        } catch (err: any) {
-            const errorMessage = err.message || "Quality check failed. Please look straight and try again.";
-            setError(errorMessage);
-            if (onError) onError(errorMessage);
-            setStep("capture");
-            setIsAutoCapturing(false);
-            setCaptureProgress(0);
-            if (captureMode === "camera") startCamera();
-        }
-    };
-
-    // --- Camera & MediaPipe Lifecycle Manager ---
-    const isComponentMounted = useRef(true);
-    const initializationLock = useRef(false);
-
-    const stopCamera = useCallback(async () => {
-        console.log("Stopping camera resources...");
-        
-        if (cameraRef.current) {
-            try {
-                await cameraRef.current.stop();
-            } catch (e) {
-                console.error("Error stopping camera utility:", e);
-            }
-            cameraRef.current = null;
-        }
-
-        if (faceMeshRef.current) {
-            try {
-                await faceMeshRef.current.close();
-            } catch (e) {
-                console.error("Error closing FaceMesh:", e);
-            }
-            faceMeshRef.current = null;
-        }
-
-        if (videoRef.current && videoRef.current.srcObject) {
-            const stream = videoRef.current.srcObject as MediaStream;
-            stream.getTracks().forEach(track => {
-                track.stop();
-                console.log(`Track ${track.label} released.`);
-            });
-            videoRef.current.srcObject = null;
-        }
-    }, []);
+    }, [triggerAutoCapture]);
 
     const startCamera = useCallback(async () => {
         if (initializationLock.current) return;
@@ -235,6 +259,11 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
 
         console.log("Starting camera sequence...");
         setValidation({ isValid: false, message: "Starting camera..." });
+
+        if (!FaceMesh || !Camera) {
+            setError("Face detection libraries failed to load. Check connection.");
+            return;
+        }
 
         try {
             // 1. Full Teardown first to be safe
@@ -246,7 +275,7 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
 
             // 3. Initialize FaceMesh
             const faceMesh = new (FaceMesh as any)({
-                locateFile: (file: string) => `/mediapipe/face_mesh/${file}`,
+                locateFile: (file: string) => `${mediapipeBasePath}/${file}`,
             });
 
             faceMesh.setOptions({
@@ -294,7 +323,12 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
         } finally {
             initializationLock.current = false;
         }
-    }, [onResults, stopCamera]);
+    }, [mediapipeBasePath, onResults, stopCamera]);
+
+    // Keep the ref updated for handles that need it
+    useEffect(() => {
+        startCameraRef.current = startCamera;
+    }, [startCamera]);
 
     useEffect(() => {
         isComponentMounted.current = true;
@@ -320,8 +354,12 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
 
         return () => {
             isComponentMounted.current = false;
+            captureAbortRef.current?.abort();
             document.removeEventListener("visibilitychange", handleVisibility);
             stopCamera();
+            if (prevPreviewRef.current) {
+                URL.revokeObjectURL(prevPreviewRef.current);
+            }
         };
     }, [captureMode, step, startCamera, stopCamera]);
 
@@ -329,6 +367,10 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
         stopCamera();
         setCaptureMode("upload");
         setStep("capture");
+        if (prevPreviewRef.current) {
+            URL.revokeObjectURL(prevPreviewRef.current);
+            prevPreviewRef.current = null;
+        }
         setImageFile(null);
         setImagePreview(null);
         setResult(null);
@@ -337,8 +379,13 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            if (prevPreviewRef.current) {
+                URL.revokeObjectURL(prevPreviewRef.current);
+            }
+            const newUrl = URL.createObjectURL(file);
+            prevPreviewRef.current = newUrl;
+            setImagePreview(newUrl);
             setImageFile(file);
-            setImagePreview(URL.createObjectURL(file));
         }
     };
 
@@ -346,6 +393,10 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
         stopCamera();
         setStep("capture");
         setResult(null);
+        if (prevPreviewRef.current) {
+            URL.revokeObjectURL(prevPreviewRef.current);
+            prevPreviewRef.current = null;
+        }
         setImageFile(null);
         setImagePreview(null);
         setError(null);
@@ -356,7 +407,7 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
     };
 
     return (
-        <div className={`pd-measurer ${className}`}>
+        <div ref={containerRef} className={`pd-measurer ${className}`}>
             <div className="pd-measurer__header">
                 <h2 className="pd-measurer__title">Advanced PD Measurement</h2>
             </div>
@@ -380,6 +431,28 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
                                     <UploadIcon />
                                     <p className="pd-measurer__capture-text">Tap to Upload Photo</p>
                                     <input id="file-input" type="file" accept="image/*" onChange={handleFileSelect} style={{ display: "none" }} />
+                                    
+                                    <div className="pd-measurer__ref-selector-wrap" onClick={(e) => e.stopPropagation()}>
+                                        <label htmlFor="ref-select">Reference Object:</label>
+                                        <select 
+                                            id="ref-select"
+                                            value={referenceType} 
+                                            onChange={(e) => setReferenceType(e.target.value)}
+                                            className="pd-measurer__ref-select"
+                                        >
+                                            <option value="none">No reference (Iris Estimation)</option>
+                                            <option value="credit_card">Credit Card (Standard)</option>
+                                            <option value="coin_gbp_1p">British 1p Coin</option>
+                                            <option value="coin_gbp_2p">British 2p Coin</option>
+                                            <option value="coin_gbp_5p">British 5p Coin</option>
+                                            <option value="coin_gbp_10p">British 10p Coin</option>
+                                            <option value="coin_gbp_20p">British 20p Coin</option>
+                                            <option value="coin_gbp_50p">British 50p Coin</option>
+                                            <option value="coin_gbp_1">British £1 Coin</option>
+                                            <option value="coin_gbp_2">British £2 Coin</option>
+                                            <option value="ruler">Standard Ruler</option>
+                                        </select>
+                                    </div>
                                 </div>
                             )}
 
@@ -401,6 +474,20 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
                                         {isAutoCapturing && (
                                             <div className="pd-measurer__sampling-badge">
                                                 LIVE SAMPLING
+                                            </div>
+                                        )}
+                                        
+                                        {!isAutoCapturing && (
+                                            <div className="pd-measurer__ref-floating-selector">
+                                                <select 
+                                                    value={referenceType} 
+                                                    onChange={(e) => setReferenceType(e.target.value)}
+                                                    className="pd-measurer__ref-select-mini"
+                                                >
+                                                    <option value="none">No ref (Iris)</option>
+                                                    <option value="credit_card">Credit Card</option>
+                                                    <option value="ruler">Ruler</option>
+                                                </select>
                                             </div>
                                         )}
                                     </div>
@@ -453,6 +540,18 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({ apiEndpoint = DEFAULT_AP
                                 <div className="pd-measurer__measurement-value">{result.right_pd_mm}mm</div>
                             </div>
                         </div>
+
+                        <div className="pd-measurer__stats">
+                            <div className="pd-measurer__stat">
+                                <span className="pd-measurer__stat-label">Confidence:</span>
+                                <span className="pd-measurer__stat-value">{(result.confidence_score * 100).toFixed(0)}%</span>
+                            </div>
+                            <div className="pd-measurer__stat">
+                                <span className="pd-measurer__stat-label">Precision:</span>
+                                <span className="pd-measurer__stat-value">±{result.error_margin.value_mm.toFixed(1)}mm</span>
+                            </div>
+                        </div>
+
                         <p className="pd-measurer__disclaimer-text" style={{ fontSize: '0.8rem', opacity: 0.7 }}>{result.disclaimer}</p>
                         <button className="pd-measurer__btn pd-measurer__btn--secondary" onClick={handleReset} style={{ zIndex: 100, position: 'relative' }}>Measure Again</button>
                     </div>

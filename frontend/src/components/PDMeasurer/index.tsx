@@ -39,7 +39,7 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({
     onError, 
     className = "", 
     primaryColor, 
-    mediapipeBasePath = "/mediapipe/face_mesh" 
+    mediapipeBasePath = "https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619" 
 }) => {
     const [step, setStep] = useState<Step>("capture");
     const [captureMode, setCaptureMode] = useState<CaptureMode>("camera");
@@ -274,23 +274,74 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({
             if (!isComponentMounted.current || !videoRef.current) return;
 
             // 3. Initialize FaceMesh
-            const faceMesh = new (FaceMesh as any)({
-                locateFile: (file: string) => `${mediapipeBasePath}/${file}`,
-            });
+            let currentBasePath = mediapipeBasePath;
+            let faceMesh;
 
-            faceMesh.setOptions({
-                maxNumFaces: 1,
-                refineLandmarks: true,
-                minDetectionConfidence: 0.5,
-                minTrackingConfidence: 0.5,
-            });
+            const initFaceMesh = (path: string) => {
+                return new (FaceMesh as any)({
+                    locateFile: (file: string) => `${path}/${file}`,
+                });
+            };
 
-            faceMesh.onResults((results: Results) => {
-                if (!isComponentMounted.current) return;
-                // Clear "Starting..." or "Detecting..." message on first valid frame
-                setValidation(prev => (prev.message === "Starting camera..." || prev.message === "Detecting face..." ? { isValid: false, message: "No face detected" } : prev));
-                onResults(results);
-            });
+            try {
+                faceMesh = initFaceMesh(currentBasePath);
+                
+                // Set options and results handler
+                faceMesh.setOptions({
+                    maxNumFaces: 1,
+                    refineLandmarks: true,
+                    minDetectionConfidence: 0.5,
+                    minTrackingConfidence: 0.5,
+                });
+
+                faceMesh.onResults((results: Results) => {
+                    if (!isComponentMounted.current) return;
+                    setValidation(prev => (prev.message === "Starting camera..." || prev.message === "Detecting face..." ? { isValid: false, message: "No face detected" } : prev));
+                    onResults(results);
+                });
+
+                // Test if the library can actually load its assets
+                // We don't want to wait for the first frame to discover the CDN is down
+                if (currentBasePath.includes("jsdelivr.net")) {
+                    console.log("Checking CDN availability...");
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout
+                    
+                    try {
+                        await fetch(`${currentBasePath}/face_mesh_solution_simd_wasm_bin.wasm`, { 
+                            method: 'HEAD', 
+                            signal: controller.signal,
+                            mode: 'no-cors' 
+                        });
+                        clearTimeout(timeoutId);
+                        // in no-cors mode, we can't check .ok, but if fetch didn't throw, we assume it's reachable
+                    } catch (e) {
+                        console.warn("CDN unreachable, falling back to local assets.");
+                        currentBasePath = "/mediapipe/face_mesh";
+                        faceMesh = initFaceMesh(currentBasePath);
+                        // Re-apply options for the new instance
+                        faceMesh.setOptions({
+                            maxNumFaces: 1,
+                            refineLandmarks: true,
+                            minDetectionConfidence: 0.5,
+                            minTrackingConfidence: 0.5,
+                        });
+                        faceMesh.onResults((results: Results) => {
+                            if (!isComponentMounted.current) return;
+                            onResults(results);
+                        });
+                    }
+                }
+            } catch (e) {
+                console.error("Critical failure during FaceMesh initialization:", e);
+                // Last ditch effort: Try local if not already tried
+                if (currentBasePath !== "/mediapipe/face_mesh") {
+                    currentBasePath = "/mediapipe/face_mesh";
+                    faceMesh = initFaceMesh(currentBasePath);
+                } else {
+                    throw e;
+                }
+            }
 
             faceMeshRef.current = faceMesh;
 

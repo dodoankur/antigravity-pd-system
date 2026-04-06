@@ -39,7 +39,7 @@ export const PDMeasurer: React.FC<PDMeasurerProps> = ({
     onError, 
     className = "", 
     primaryColor, 
-    mediapipeBasePath = "https://www.gstatic.com/mediapipe/solutions/face_mesh" 
+    mediapipeBasePath = "https://www.gstatic.com/mediapipe/solutions/face_mesh/0.4.1633559619" 
 }) => {
     const [step, setStep] = useState<Step>("capture");
     const [captureMode, setCaptureMode] = useState<CaptureMode>("camera");

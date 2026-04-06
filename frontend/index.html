@@ -8,21 +8,21 @@
 
         <!-- MediaPipe Global Scripts (Bypasses Vite Bundling Errors) -->
         <!-- MediaPipe Global Scripts (Official CDN for better performance) -->
-        <!-- MediaPipe Global Scripts (Official Google CDN for maximum performance) -->
+        <!-- MediaPipe Global Scripts (Official Google CDN with full versioning) -->
         <script 
-            src="https://www.gstatic.com/mediapipe/solutions/face_mesh/face_mesh.js" 
+            src="https://www.gstatic.com/mediapipe/solutions/face_mesh/0.4.1633559619/face_mesh.js" 
             crossorigin="anonymous"
             onerror="this.onerror=null; this.src='/mediapipe/face_mesh/face_mesh.js'; console.warn('MediaPipe FaceMesh CDN down, falling back to local.')"
         ></script>
         <script 
-            src="https://www.gstatic.com/mediapipe/solutions/camera_utils/camera_utils.js" 
+            src="https://www.gstatic.com/mediapipe/solutions/camera_utils/0.3.1675466862/camera_utils.js" 
             crossorigin="anonymous"
             onerror="this.onerror=null; this.src='/mediapipe/camera_utils/camera_utils.js'; console.warn('MediaPipe CameraUtils CDN down, falling back to local.')"
         ></script>
 
         <!-- Preload heavy assets to warm up the cache early -->
-        <link rel="preload" href="https://www.gstatic.com/mediapipe/solutions/face_mesh/face_mesh_solution_simd_wasm_bin.wasm" as="fetch" type="application/wasm" crossorigin="anonymous">
-        <link rel="preload" href="https://www.gstatic.com/mediapipe/solutions/face_mesh/face_mesh_solution_packed_assets.data" as="fetch" crossorigin="anonymous">
+        <link rel="preload" href="https://www.gstatic.com/mediapipe/solutions/face_mesh/0.4.1633559619/face_mesh_solution_simd_wasm_bin.wasm" as="fetch" type="application/wasm" crossorigin="anonymous">
+        <link rel="preload" href="https://www.gstatic.com/mediapipe/solutions/face_mesh/0.4.1633559619/face_mesh_solution_packed_assets.data" as="fetch" crossorigin="anonymous">
     </head>
     <body>
         <div id="root"></div>

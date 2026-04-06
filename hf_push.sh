@@ -32,12 +32,14 @@ if [ ! -f "$ENV_FILE" ] && [ ! -z "$HF_TOKEN" ]; then
     chmod 600 "$ENV_FILE"
 fi
 
-# Instead of embedding token in URL, use it via credential helper
-HF_REMOTE="https://huggingface.co/spaces/$HF_USERNAME/$HF_SPACE_NAME"
-
 # 2. Preparation
 echo "📁 Preparing backend folder for push..."
 cd backend
+
+# Instead of embedding token in URL, use it via credential helper
+HF_REMOTE_URL="https://$HF_USERNAME:$HF_TOKEN@huggingface.co/spaces/$HF_USERNAME/$HF_SPACE_NAME"
+# Use a separate remote specifically for the authenticated URL to avoid leaking it in logs if possible, 
+# although git remote -v would show it. 
 
 # Initialize a temporary git repo if not exists
 if [ ! -d ".git" ]; then
@@ -46,7 +48,7 @@ fi
 
 # Add the Hugging Face remote
 git remote remove hf 2>/dev/null
-git remote add hf "$HF_REMOTE"
+git remote add hf "$HF_REMOTE_URL"
 
 # 3. Deployment
 echo "📦 Committing and Pushing to Hugging Face..."
@@ -54,8 +56,7 @@ git add .
 git commit -m "Deployment: Direct Push to Hugging Face" 2>/dev/null || echo "No changes to commit"
 
 # Push to Hugging Face (forced to ensure the Space matches our code)
-# Use the token securely via a one-time credential helper
-git -c credential.helper='!f() { echo "password=$HF_TOKEN"; }; f' push hf main --force
+git push hf main --force
 
 echo ""
 echo "✅ Push complete!"

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Frame Diagnostics</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #111; color: #eee; }
+    video { width: 320px; border: 1px solid #555; display: block; margin: 10px 0; }
+    button { padding: 10px 20px; margin: 5px; background: #333; color: #fff; border: 1px solid #666; cursor: pointer; font-size: 14px; }
+    button:hover { background: #555; }
+    pre { background: #1e1e1e; padding: 15px; border-radius: 6px; white-space: pre-wrap; font-size: 13px; }
+    .ok { color: #4caf50; } .warn { color: #ff9800; } .err { color: #f44336; }
+    canvas { display: none; }
+    #results-list { list-style: none; padding: 0; }
+    #results-list li { margin: 4px 0; padding: 8px; background: #1e1e1e; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h2>🔬 Camera Frame Diagnostics</h2>
+  <p>Opens your camera, captures frames, sends to <code>/api/pd/diagnose-frame</code>, shows real blur/brightness scores.</p>
+
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="canvas"></canvas>
+
+  <div>
+    <button id="startBtn">▶ Start Camera</button>
+    <button id="captureBtn" disabled>📸 Capture &amp; Diagnose (5 frames)</button>
+    <button id="stopBtn" disabled>⏹ Stop Camera</button>
+  </div>
+
+  <p id="status">Status: idle</p>
+  <ul id="results-list"></ul>
+
+  <script>
+    const video   = document.getElementById('video');
+    const canvas  = document.getElementById('canvas');
+    const startBtn  = document.getElementById('startBtn');
+    const captureBtn = document.getElementById('captureBtn');
+    const stopBtn   = document.getElementById('stopBtn');
+    const status  = document.getElementById('status');
+    const list    = document.getElementById('results-list');
+
+    let stream = null;
+
+    startBtn.onclick = async () => {
+      try {
+        status.textContent = 'Status: requesting camera…';
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width:  { ideal: 1920, min: 1280 },
+            height: { ideal: 1080, min: 720  },
+            facingMode: { ideal: 'user' },
+            frameRate:  { ideal: 30, min: 15 },
+            resizeMode: 'none',
+          },
+          audio: false
+        });
+        const track    = stream.getVideoTracks()[0];
+        const settings = track?.getSettings();
+        status.textContent = `Status: camera live — ${settings?.width}×${settings?.height} @ ${settings?.frameRate}fps (resizeMode: ${settings?.resizeMode ?? 'unknown'})`;
+        video.srcObject = stream;
+        await new Promise(r => { video.onloadeddata = r; });
+        captureBtn.disabled = false;
+        stopBtn.disabled = false;
+        startBtn.disabled = true;
+      } catch(e) {
+        status.textContent = `Status: ERROR — ${e.message}`;
+      }
+    };
+
+    stopBtn.onclick = () => {
+      if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+      video.srcObject = null;
+      captureBtn.disabled = true;
+      stopBtn.disabled = true;
+      startBtn.disabled = false;
+      status.textContent = 'Status: stopped';
+    };
+
+    captureBtn.onclick = async () => {
+      if (!stream) return;
+      captureBtn.disabled = true;
+      list.innerHTML = '';
+      status.textContent = 'Status: capturing 5 frames…';
+
+      for (let i = 0; i < 5; i++) {
+        // RAF-sync like production code
+        await new Promise(r => requestAnimationFrame(r));
+
+        canvas.width  = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(video, 0, 0);
+
+        // PNG blob — same as production
+        const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+
+        const fd = new FormData();
+        fd.append('image', blob, `frame_${i}.png`);
+
+        let result;
+        try {
+          const resp = await fetch('/api/pd/diagnose-frame', { method: 'POST', body: fd });
+          result = await resp.json();
+        } catch(e) {
+          result = { error: e.message };
+        }
+
+        const li = document.createElement('li');
+        const blur = result.blur_score;
+        const minB = result.MIN_BLUR_CAMERA;
+        const ok   = result.is_reliable;
+        const cls  = result.error ? 'err' : (ok ? 'ok' : 'warn');
+        li.className = cls;
+        li.innerHTML =
+          `<b>Frame ${i+1}</b> — ` +
+          `size: ${result.image_size || '?'} | ` +
+          `<b>blur: ${blur != null ? blur.toFixed(1) : '?'}</b> (min=${minB}) | ` +
+          `brightness: ${result.brightness != null ? result.brightness.toFixed(1) : '?'} | ` +
+          `reliable: ${ok} | ` +
+          `face: ${result.face_detected} | usable: ${result.is_usable} | ` +
+          `reject: <b>${result.reject_reason || 'none'}</b><br>` +
+          `yaw: ${result.yaw_deg != null ? result.yaw_deg.toFixed(1) : '?'}° ` +
+          `pitch: ${result.pitch_deg != null ? result.pitch_deg.toFixed(1) : '?'}° ` +
+          `roll: ${result.roll_deg != null ? result.roll_deg.toFixed(1) : '?'}° | ` +
+          `sym_H: ${result.sym_horizontal != null ? result.sym_horizontal.toFixed(3) : '?'} ` +
+          `sym_V: ${result.sym_vertical != null ? result.sym_vertical.toFixed(3) : '?'} | ` +
+          `<b>gate_sym: ${result.gate_sym_fail || '✓'}</b> | ` +
+          `<b>gate_pose: ${result.gate_pose_fail || '✓'}</b>`;
+        list.appendChild(li);
+
+        // 400ms between frames, same as production
+        await new Promise(r => setTimeout(r, 400));
+      }
+
+      captureBtn.disabled = false;
+      status.textContent = 'Status: done — check results above';
+    };
+  </script>
+</body>
+</html>

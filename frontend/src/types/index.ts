@@ -36,6 +36,12 @@ export interface PDMeasurementResult {
     eyes_detected: boolean;
     reference_detected: boolean | null;
     reference_scale_factor: number | null;
+    // New fields
+    asymmetry_warning: boolean;
+    frames_accepted: number | null;
+    frames_rejected: number | null;
+    // Age calibration (T3-3A/B)
+    age_group_used: string | null;
 }
 
 export interface ReferenceTypeOption {

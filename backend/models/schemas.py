@@ -61,6 +61,13 @@ class PDMeasurementResult(BaseModel):
     eyes_detected: bool = True
     reference_detected: Optional[bool] = None
     reference_scale_factor: Optional[float] = None
+    # NEW: True when |left_pd - right_pd| > 4mm — suggests retake or optician visit
+    asymmetry_warning: bool = False
+    # NEW: how many frames were accepted / rejected in a batch
+    frames_accepted: Optional[int] = None
+    frames_rejected: Optional[int] = None
+    # NEW: age group used for iris diameter calibration (auto-detected or user-selected)
+    age_group_used: Optional[str] = None
 
 
 class HealthResponse(BaseModel):

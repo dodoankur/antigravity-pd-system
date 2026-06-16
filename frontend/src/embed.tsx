@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { PDMeasurer } from "./components/PDMeasurer";
 import componentStyles from "./components/PDMeasurer/styles.css?inline";
+import type { PDMeasurementResult } from "./types";
 
 /**
  * Embeddable Widget Entry Point
@@ -24,7 +25,8 @@ import componentStyles from "./components/PDMeasurer/styles.css?inline";
 
 interface WidgetOptions {
     apiEndpoint?: string;
-    onMeasurement?: (result: unknown) => void;
+    /** Typed callback — receives the full PDMeasurementResult from the API */
+    onMeasurement?: (result: PDMeasurementResult) => void;
     onError?: (error: string) => void;
     primaryColor?: string;
 }

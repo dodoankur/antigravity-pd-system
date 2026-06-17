@@ -20,6 +20,15 @@ export default defineConfig({
             ],
         }),
     ],
+    // Multi-page: main demo + dedicated embed page
+    build: {
+        rollupOptions: {
+            input: {
+                main:  resolve(__dirname, "index.html"),
+                embed: resolve(__dirname, "embed.html"),
+            },
+        },
+    },
     resolve: {
         alias: {
             "@": resolve(__dirname, "./src"),

@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IframeUI — Test Page</title>
+    <style>
+        /* ── Reset ── */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1e1e2e;
+            color: #cdd6f4;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Top bar ── */
+        .topbar {
+            background: #181825;
+            border-bottom: 1px solid #313244;
+            padding: 14px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .topbar-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #cdd6f4;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .topbar-badge {
+            font-size: 0.68rem;
+            font-weight: 700;
+            background: #a6e3a1;
+            color: #1e1e2e;
+            padding: 3px 9px;
+            border-radius: 20px;
+            letter-spacing: 0.04em;
+        }
+
+        .topbar-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .topbar-btn {
+            padding: 8px 18px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 600;
+            transition: opacity 0.15s;
+        }
+
+        .topbar-btn:hover {
+            opacity: 0.85;
+        }
+
+        .topbar-btn--primary {
+            background: #89b4fa;
+            color: #1e1e2e;
+        }
+
+        .topbar-btn--secondary {
+            background: #313244;
+            color: #cdd6f4;
+        }
+
+        /* ── Layout ── */
+        .layout {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 360px;
+            gap: 0;
+            height: calc(100vh - 57px);
+        }
+
+        /* ── Preview area (iframe lives here) ── */
+        .preview-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 32px;
+            gap: 20px;
+            background: #1e1e2e;
+            overflow: auto;
+        }
+
+        .preview-label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #6c7086;
+        }
+
+        /* Device frame */
+        .device-frame {
+            position: relative;
+            background: #181825;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow:
+                0 0 0 2px #45475a,
+                0 24px 60px rgba(0, 0, 0, 0.6);
+            transition: width 0.3s ease, height 0.3s ease;
+        }
+
+        .device-frame--mobile {
+            width: 480px;
+            height: 820px;
+        }
+
+        .device-frame--tablet {
+            width: 680px;
+            height: 900px;
+        }
+
+        .device-frame--full {
+            width: min(860px, calc(100vw - 420px));
+            height: 820px;
+        }
+
+        .device-frame iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            background: #181825;
+            border-left: 1px solid #313244;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .sidebar-section {
+            padding: 20px 22px;
+            border-bottom: 1px solid #313244;
+        }
+
+        .sidebar-section-title {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #6c7086;
+            margin-bottom: 14px;
+        }
+
+        /* Viewport switcher */
+        .viewport-btns {
+            display: flex;
+            gap: 6px;
+        }
+
+        .viewport-btn {
+            flex: 1;
+            padding: 9px 8px;
+            border-radius: 8px;
+            border: 1px solid #313244;
+            background: transparent;
+            color: #a6adc8;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: center;
+        }
+
+        .viewport-btn:hover {
+            border-color: #89b4fa;
+            color: #89b4fa;
+        }
+
+        .viewport-btn.active {
+            background: #89b4fa22;
+            border-color: #89b4fa;
+            color: #89b4fa;
+        }
+
+        /* Event log */
+        .event-log {
+            background: #11111b;
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Menlo', 'Fira Code', 'Consolas', monospace;
+            font-size: 0.78rem;
+            min-height: 140px;
+            max-height: 280px;
+            overflow-y: auto;
+            line-height: 1.6;
+            color: #a6adc8;
+        }
+
+        .log-entry {
+            margin-bottom: 4px;
+        }
+
+        .log-time {
+            color: #6c7086;
+            margin-right: 6px;
+        }
+
+        .log-type {
+            font-weight: 700;
+            margin-right: 4px;
+        }
+
+        .log-type--pd {
+            color: #a6e3a1;
+        }
+
+        .log-type--info {
+            color: #89b4fa;
+        }
+
+        .log-type--warn {
+            color: #f9e2af;
+        }
+
+        .log-type--error {
+            color: #f38ba8;
+        }
+
+        .log-type--event {
+            color: #cba6f7;
+        }
+
+        /* PD Result display */
+        .result-box {
+            background: #11111b;
+            border: 1px solid #313244;
+            border-radius: 10px;
+            padding: 16px;
+        }
+
+        .result-empty {
+            color: #6c7086;
+            font-size: 0.82rem;
+            text-align: center;
+            padding: 12px 0;
+        }
+
+        .result-value-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #313244;
+        }
+
+        .result-value-row:last-child {
+            border-bottom: none;
+        }
+
+        .result-key {
+            font-size: 0.8rem;
+            color: #6c7086;
+        }
+
+        .result-val {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #cdd6f4;
+        }
+
+        .result-val--highlight {
+            color: #a6e3a1;
+            font-size: 1.1rem;
+        }
+
+        /* Info chips */
+        .info-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .info-chip {
+            background: #313244;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 0.72rem;
+            color: #a6adc8;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #45475a;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ── Top bar ── -->
+    <div class="topbar">
+        <div class="topbar-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#89b4fa" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+            </svg>
+            IframeUI — Embedded PD Measurement Test Page
+            <span class="topbar-badge">DEV</span>
+        </div>
+        <div class="topbar-actions">
+            <button class="topbar-btn topbar-btn--secondary" onclick="reloadIframe()">↺ Reload iframe</button>
+            <button class="topbar-btn topbar-btn--primary"
+                onclick="window.open('http://localhost:5173/embed','_blank')">Open full page ↗</button>
+        </div>
+    </div>
+
+    <!-- ── Main layout ── -->
+    <div class="layout">
+
+        <!-- Preview -->
+        <div class="preview-area" id="preview-area">
+            <span class="preview-label" id="preview-label">Mobile (480 × 820)</span>
+
+            <div class="device-frame device-frame--mobile" id="device-frame">
+                <iframe id="pd-embed-iframe" src="http://localhost:5173/embed" allow="camera; microphone"
+                    allowfullscreen></iframe>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+
+            <!-- Viewport switcher -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Viewport</div>
+                <div class="viewport-btns">
+                    <button class="viewport-btn active" onclick="setViewport('mobile', this)">📱 Mobile</button>
+                    <button class="viewport-btn" onclick="setViewport('tablet', this)">📟 Tablet</button>
+                    <button class="viewport-btn" onclick="setViewport('full',   this)">🖥 Full</button>
+                </div>
+            </div>
+
+            <!-- Last PD result -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Last PD Result</div>
+                <div class="result-box" id="result-box">
+                    <p class="result-empty">No measurement yet.<br>Complete a scan in the iframe.</p>
+                </div>
+            </div>
+
+            <!-- postMessage event log -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Event Log</div>
+                <div class="event-log" id="event-log">
+                    <div class="log-entry"><span class="log-time">--:--:--</span><span
+                            class="log-type log-type--info">INFO</span> Waiting for postMessage from iframe…</div>
+                </div>
+            </div>
+
+            <!-- Info -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Info</div>
+                <div class="info-chips">
+                    <span class="info-chip">iframe src → /embed</span>
+                    <span class="info-chip">postMessage: PD_RESULT</span>
+                    <span class="info-chip">allow="camera"</span>
+                    <span class="info-chip">Poppins font</span>
+                    <span class="info-chip">Full-screen camera UI</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // ── Viewport switcher ────────────────────────────────────────────────────
+
+        const VIEWPORTS = {
+            mobile: { cls: 'device-frame--mobile', label: 'Mobile (480 × 820)' },
+            tablet: { cls: 'device-frame--tablet', label: 'Tablet (680 × 900)' },
+            full:   { cls: 'device-frame--full',   label: 'Full width (860 × 820)' },
+        };
+
+        function setViewport(name, btn) {
+            const frame = document.getElementById('device-frame');
+            const label = document.getElementById('preview-label');
+            // remove all viewport classes
+            Object.values(VIEWPORTS).forEach(v => frame.classList.remove(v.cls));
+            frame.classList.add(VIEWPORTS[name].cls);
+            label.textContent = VIEWPORTS[name].label;
+            // active button
+            document.querySelectorAll('.viewport-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        // ── Reload iframe ────────────────────────────────────────────────────────
+
+        function reloadIframe() {
+            const iframe = document.getElementById('pd-embed-iframe');
+            iframe.src = iframe.src;
+            addLog('info', 'iframe reloaded');
+        }
+
+        // ── Event log ────────────────────────────────────────────────────────────
+
+        function addLog(type, msg) {
+            const log = document.getElementById('event-log');
+            const now = new Date().toTimeString().slice(0, 8);
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `<span class="log-time">${now}</span><span class="log-type log-type--${type}">${type.toUpperCase()}</span> ${msg}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        // ── postMessage listener ─────────────────────────────────────────────────
+
+        window.addEventListener('message', function (e) {
+            // Security: only trust messages from our iframe origin
+            if (!e.origin.includes('localhost')) return;
+
+            const data = e.data;
+
+            if (data && data.type === 'PD_RESULT') {
+                addLog('pd', `PD_RESULT received — Overall: ${data.overall_pd_mm}mm, R: ${data.right_pd_mm}mm, L: ${data.left_pd_mm}mm`);
+                renderResult(data);
+            } else {
+                addLog('event', `Unknown message: ${JSON.stringify(data).slice(0, 80)}`);
+            }
+        });
+
+        function renderResult(data) {
+            const box = document.getElementById('result-box');
+            box.innerHTML = `
+            <div class="result-value-row">
+                <span class="result-key">Overall PD</span>
+                <span class="result-val result-val--highlight">${data.overall_pd_mm} mm</span>
+            </div>
+            <div class="result-value-row">
+                <span class="result-key">Right PD</span>
+                <span class="result-val">${data.right_pd_mm} mm</span>
+            </div>
+            <div class="result-value-row">
+                <span class="result-key">Left PD</span>
+                <span class="result-val">${data.left_pd_mm} mm</span>
+            </div>
+        `;
+        }
+
+        // ── Log iframe load ──────────────────────────────────────────────────────
+
+        document.getElementById('pd-embed-iframe').addEventListener('load', function () {
+            addLog('info', 'iframe loaded (src: /embed)');
+        });
+    </script>
+
+</body>
+
+</html>

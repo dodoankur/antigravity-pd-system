@@ -11,26 +11,37 @@ const EyeIcon = () => (
     </svg>
 );
 
+const UploadIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="16 16 12 12 8 16" />
+        <line x1="12" y1="12" x2="12" y2="21" />
+        <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
+    </svg>
+);
+
+const FlipCameraIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20 7h-3a2 2 0 0 1-2-2V2" />
+        <path d="M9 2H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9l-5-5z" />
+        <circle cx="12" cy="14" r="3" />
+        <polyline points="7 10 7 7 10 7" />
+    </svg>
+);
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
-/**
- * IframeUI — A full-screen, Lenskart-inspired PD measurement UI
- * designed exclusively for the embedded / iframe context inside the POS portal.
- *
- * All measurement logic is delegated to the backend; this component owns only
- * the camera capture, result display, and postMessage handoff.
- */
 export const IframeUI: React.FC<PDMeasurerProps> = ({
     apiEndpoint = "/api/pd/measure-batch",
     onMeasurement,
     onError,
     mediapipeBasePath = "/mediapipe/face_mesh",
 }) => {
-    type Step = "capture" | "processing" | "results" | "error";
+    type Step = "capture" | "upload" | "processing" | "results" | "error";
 
     const videoRef  = useRef<HTMLVideoElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [step,            setStep]            = useState<Step>("capture");
     const [result,          setResult]          = useState<PDMeasurementResult | null>(null);
@@ -40,7 +51,17 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
     const [isCapturing,     setIsCapturing]     = useState<boolean>(false);
     const [captureProgress, setCaptureProgress] = useState<number>(0);
 
-    // MediaPipe + face-mesh refs
+    // Camera flip state
+    const [cameras,        setCameras]        = useState<MediaDeviceInfo[]>([]);
+    const [activeCamIdx,   setActiveCamIdx]   = useState<number>(0);
+
+    // Upload state
+    const [uploadPreview,  setUploadPreview]  = useState<string | null>(null);
+    const [uploadFile,     setUploadFile]     = useState<File | null>(null);
+    const [uploadError,    setUploadError]    = useState<string>("");
+    const [isConverting,   setIsConverting]   = useState<boolean>(false);
+
+    // MediaPipe refs
     const faceMeshRef    = useRef<any>(null);
     const cameraRef      = useRef<any>(null);
     const capturedFrames = useRef<string[]>([]);
@@ -48,7 +69,24 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
     const TOTAL_FRAMES   = 10;
     const WARMUP_FRAMES  = 3;
 
-    // ── Camera ────────────────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    const uploadEndpoint  = apiEndpoint.replace(/\/api\/pd\/measure.*$/, "/api/pd/measure");
+    const convertEndpoint = apiEndpoint.replace(/\/api\/pd\/measure.*$/, "/api/convert/heif");
+
+    // ── Camera enumerate ──────────────────────────────────────────────────────
+
+    const enumerateCameras = useCallback(async () => {
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoCams = devices.filter(d => d.kind === "videoinput");
+            setCameras(videoCams);
+        } catch {
+            // silently ignore
+        }
+    }, []);
+
+    // ── Camera start / stop ───────────────────────────────────────────────────
 
     const stopCamera = useCallback(() => {
         cameraRef.current?.stop();
@@ -56,12 +94,17 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
         streamRef.current = null;
     }, []);
 
-    const startCamera = useCallback(async () => {
+    const startCamera = useCallback(async (camIndex = 0, camList = cameras) => {
         if (!videoRef.current) return;
+        stopCamera();
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { width: { ideal: 1920 }, height: { ideal: 1080 }, facingMode: "user" },
-            });
+            const target = camList[camIndex];
+            const constraints: MediaStreamConstraints = {
+                video: target?.deviceId
+                    ? { deviceId: { exact: target.deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+                    : { width: { ideal: 1920 }, height: { ideal: 1080 }, facingMode: "user" },
+            };
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
             streamRef.current = stream;
             videoRef.current.srcObject = stream;
             await videoRef.current.play();
@@ -69,9 +112,9 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
             setErrorMsg("Camera access denied. Please allow camera permissions and try again.");
             setStep("error");
         }
-    }, []);
+    }, [cameras, stopCamera]);
 
-    // ── MediaPipe face-mesh (validation only, not measurement) ────────────────
+    // ── MediaPipe face-mesh ───────────────────────────────────────────────────
 
     const initFaceMesh = useCallback(() => {
         const win = window as any;
@@ -94,69 +137,47 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
                 return;
             }
 
-            // ── 1. SIZE CHECK ─────────────────────────────────────────────────
-            // faceW is normalised 0..1 relative to frame width
+            // ── 1. SIZE CHECK ──────────────────────────────────────────────────
             const lms  = res.multiFaceLandmarks[0];
             const xs   = lms.map((l: any) => l.x);
             const ys   = lms.map((l: any) => l.y);
-            const faceW = Math.max(...xs) - Math.min(...xs);
+            const faceW   = Math.max(...xs) - Math.min(...xs);
             const actualW = videoRef.current?.videoWidth ?? 1280;
 
-            // Expose for live tuning via console: window.__pdFaceW, window.__pdActualW
             (window as any).__pdFaceW   = faceW;
             (window as any).__pdActualW = actualW;
 
-            // Resolution-scaled thresholds (baseline at 1280px stream width):
-            //   Calibrated from real measurements (Jun 2026):
-            //     faceW=0.154 → one hand away (too far, reject)
-            //     faceW=0.217 → arm's length ~60cm (sweet spot ✅)
-            //     faceW=0.397 → very close/nose-to-screen (too close, reject)
-            //   minFace=0.18 → accept from ~55–70cm away
-            //   maxFace=0.35 → reject if closer than ~35cm
+            // Calibrated Jun 2026: arm's length faceW≈0.217, close≈0.397
             const scale   = 1280 / actualW;
             const minFace = 0.18 * scale;
             const maxFace = 0.35 * scale;
 
             if (faceW < minFace) {
-                setIsValid(false); setInstruction(`Move closer — about an arm's length away [${faceW.toFixed(3)}]`); return;
+                setIsValid(false); setInstruction(`Move closer — about an arm's length away`); return;
             }
             if (faceW > maxFace) {
-                setIsValid(false); setInstruction(`Too close — move back a little [${faceW.toFixed(3)}]`); return;
+                setIsValid(false); setInstruction(`Too close — move back a little`); return;
             }
 
-            // ── 2. CENTRE-IN-BOX CHECK ────────────────────────────────────────
-            // Face centre (normalised 0..1) must sit inside the guide box bounds.
-            // Box bounds measured from DOM (normalised to overlay dimensions):
-            //   X: 0.36 → 0.64   Y: 0.135 → 0.755
-            // Note: MediaPipe x is mirrored (video scaleX(-1)) — flip x for display.
+            // ── 2. CENTRE-IN-BOX CHECK ─────────────────────────────────────────
             const rawFaceCx = (Math.min(...xs) + Math.max(...xs)) / 2;
             const rawFaceCy = (Math.min(...ys) + Math.max(...ys)) / 2;
-            // Mirror x to match the CSS scaleX(-1) on the video element
-            const faceCx = 1 - rawFaceCx;
+            const faceCx = 1 - rawFaceCx; // mirror for CSS scaleX(-1)
             const faceCy = rawFaceCy;
 
-            // Guide box normalised bounds (with a small inward tolerance of 0.04)
             const tolerance = 0.04;
-            const BOX_X_MIN = 0.36 + tolerance;   // 0.40
-            const BOX_X_MAX = 0.64 - tolerance;   // 0.60
-            const BOX_Y_MIN = 0.135 + tolerance;  // 0.175
-            const BOX_Y_MAX = 0.755 - tolerance;  // 0.715
+            const BOX_X_MIN = 0.36 + tolerance;
+            const BOX_X_MAX = 0.64 - tolerance;
+            const BOX_Y_MIN = 0.135 + tolerance;
+            const BOX_Y_MAX = 0.755 - tolerance;
 
-            if (faceCx < BOX_X_MIN) {
-                setIsValid(false); setInstruction("Move your face to the right"); return;
-            }
-            if (faceCx > BOX_X_MAX) {
-                setIsValid(false); setInstruction("Move your face to the left"); return;
-            }
-            if (faceCy < BOX_Y_MIN) {
-                setIsValid(false); setInstruction("Move your face down"); return;
-            }
-            if (faceCy > BOX_Y_MAX) {
-                setIsValid(false); setInstruction("Move your face up"); return;
-            }
+            if (faceCx < BOX_X_MIN) { setIsValid(false); setInstruction("Move your face to the right"); return; }
+            if (faceCx > BOX_X_MAX) { setIsValid(false); setInstruction("Move your face to the left");  return; }
+            if (faceCy < BOX_Y_MIN) { setIsValid(false); setInstruction("Move your face down");          return; }
+            if (faceCy > BOX_Y_MAX) { setIsValid(false); setInstruction("Move your face up");            return; }
 
             setIsValid(true);
-            if (!isCapturing) setInstruction(`Hold still — looking good! [${faceW.toFixed(3)}]`);
+            if (!isCapturing) setInstruction("Hold still — looking good!");
         });
 
         faceMeshRef.current = fm;
@@ -174,8 +195,8 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
     }, [mediapipeBasePath, isCapturing]);
 
     useEffect(() => {
-        startCamera().then(() => {
-            // Wait for scripts to be available
+        enumerateCameras().then(async () => {
+            await startCamera(0);
             const interval = setInterval(() => {
                 if ((window as any).FaceMesh && (window as any).Camera) {
                     clearInterval(interval);
@@ -186,7 +207,20 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
         return () => stopCamera();
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // ── Capture ───────────────────────────────────────────────────────────────
+    // ── Camera flip ───────────────────────────────────────────────────────────
+
+    const handleFlipCamera = useCallback(async () => {
+        const nextIdx = (activeCamIdx + 1) % cameras.length;
+        setActiveCamIdx(nextIdx);
+        warmupCount.current = 0;
+        setIsValid(false);
+        setInstruction("Position your face inside the frame");
+        await startCamera(nextIdx, cameras);
+        // Re-init MediaPipe on the new stream
+        setTimeout(() => initFaceMesh(), 300);
+    }, [activeCamIdx, cameras, startCamera, initFaceMesh]);
+
+    // ── Capture frames ────────────────────────────────────────────────────────
 
     const captureFrames = useCallback(async () => {
         if (!videoRef.current || !canvasRef.current) return;
@@ -212,7 +246,7 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
         submitFrames(capturedFrames.current);
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // ── Submit ────────────────────────────────────────────────────────────────
+    // ── Submit batch frames ───────────────────────────────────────────────────
 
     const submitFrames = useCallback(async (frames: string[]) => {
         setStep("processing");
@@ -228,13 +262,16 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
             blobs.forEach((blob, i) => form.append("images", blob, `frame_${i}.png`));
             form.append("age_group", "auto");
 
+            // apiEndpoint is already /api/pd/measure-batch (the default)
             const resp = await fetch(apiEndpoint, { method: "POST", body: form });
             if (!resp.ok) throw new Error(`Server error ${resp.status}`);
 
             const data: PDMeasurementResult = await resp.json();
             setResult(data);
             setStep("results");
-            onMeasurement?.(data);
+            // Pass middle frame as best frame to parent
+            const bestFrame = capturedFrames.current[Math.floor(capturedFrames.current.length / 2)] ?? null;
+            onMeasurement?.({ ...data, best_frame_dataurl: bestFrame });
         } catch (err: any) {
             const msg = err?.message ?? "Measurement failed. Please try again.";
             setErrorMsg(msg);
@@ -243,54 +280,149 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
         }
     }, [apiEndpoint, onMeasurement, onError, stopCamera]);
 
-    // ── Reset ─────────────────────────────────────────────────────────────────
+    // ── Upload: file select ───────────────────────────────────────────────────
+
+    const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploadError("");
+        setUploadPreview(null);
+        setUploadFile(null);
+
+        const isHeic =
+            file.type === "image/heic" ||
+            file.type === "image/heif" ||
+            /\.(heic|heif)$/i.test(file.name);
+
+        if (isHeic) {
+            // Send to backend HEIC→JPEG converter
+            setIsConverting(true);
+            try {
+                const form = new FormData();
+                form.append("image", file, file.name);
+                const res = await fetch(convertEndpoint, { method: "POST", body: form });
+                if (!res.ok) throw new Error("HEIC conversion failed");
+                const blob = await res.blob();
+                const converted = new File(
+                    [blob],
+                    file.name.replace(/\.(heic|heif)$/i, ".jpg"),
+                    { type: "image/jpeg" }
+                );
+                setUploadFile(converted);
+                setUploadPreview(URL.createObjectURL(blob));
+            } catch {
+                setUploadError("Could not convert HEIC file. Please try a JPEG or PNG.");
+            } finally {
+                setIsConverting(false);
+            }
+        } else {
+            setUploadFile(file);
+            setUploadPreview(URL.createObjectURL(file));
+        }
+    }, [convertEndpoint]);
+
+    // ── Upload: submit single image ───────────────────────────────────────────
+
+    const submitUpload = useCallback(async () => {
+        if (!uploadFile) return;
+        setStep("processing");
+
+        try {
+            const form = new FormData();
+            form.append("image", uploadFile, uploadFile.name);
+            form.append("age_group", "auto");
+
+            const resp = await fetch(uploadEndpoint, { method: "POST", body: form });
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({}));
+                throw new Error(err.detail ?? `Server error ${resp.status}`);
+            }
+
+            const data: PDMeasurementResult = await resp.json();
+            setResult(data);
+            setStep("results");
+            // For upload mode, use the preview image as the best frame
+            onMeasurement?.({ ...data, best_frame_dataurl: uploadPreview ?? null });
+        } catch (err: any) {
+            const msg = err?.message ?? "Measurement failed. Please try again.";
+            setErrorMsg(msg);
+            setStep("error");
+            onError?.(msg);
+        }
+    }, [uploadFile, uploadEndpoint, onMeasurement, onError, uploadPreview]);
+
+    // ── Reset ──────────────────────────────────────────────────────────────────
 
     const handleRestart = useCallback(() => {
         setStep("capture");
         setResult(null);
         setErrorMsg("");
+        setUploadPreview(null);
+        setUploadFile(null);
+        setUploadError("");
         setCaptureProgress(0);
         setIsCapturing(false);
         setIsValid(false);
-        warmupCount.current   = 0;
+        warmupCount.current    = 0;
         capturedFrames.current = [];
         setInstruction("Position your face inside the frame");
-        startCamera().then(initFaceMesh);
-    }, [startCamera, initFaceMesh]);
+        startCamera(activeCamIdx, cameras).then(() => initFaceMesh());
+    }, [startCamera, initFaceMesh, activeCamIdx, cameras]);
 
-    // ── Render ────────────────────────────────────────────────────────────────
+    const switchToUpload = useCallback(() => {
+        stopCamera();
+        setUploadPreview(null);
+        setUploadFile(null);
+        setUploadError("");
+        setIsValid(false);
+        setInstruction("Position your face inside the frame");
+        setStep("upload");
+    }, [stopCamera]);
+
+    const switchToCamera = useCallback(() => {
+        setUploadPreview(null);
+        setUploadFile(null);
+        setUploadError("");
+        setStep("capture");
+        warmupCount.current = 0;
+        startCamera(activeCamIdx, cameras).then(() => {
+            const interval = setInterval(() => {
+                if ((window as any).FaceMesh && (window as any).Camera) {
+                    clearInterval(interval);
+                    initFaceMesh();
+                }
+            }, 200);
+        });
+    }, [startCamera, initFaceMesh, activeCamIdx, cameras]);
+
+    // ── Render ─────────────────────────────────────────────────────────────────
 
     return (
         <div className="ifu">
 
-            {/* ── Close button (always visible — posts PD_CLOSE to parent POS modal) ── */}
+            {/* ── Close button ── */}
             <button
                 className="ifu__close-btn"
                 aria-label="Close"
                 onClick={() => {
                     stopCamera();
                     if (window.parent !== window) {
-                        window.parent.postMessage({ type: 'PD_CLOSE' }, '*');
+                        window.parent.postMessage({ type: "PD_CLOSE" }, "*");
                     }
                 }}
             >✕</button>
 
             {/* ── CAPTURE STEP ── */}
-            {(step === "capture" || step === "error") && (
+            {(step === "capture" || (step === "error" && !uploadFile)) && (
                 <div className="ifu__camera-wrap">
-                    {/* Live video — full bleed */}
-                    <video
-                        ref={videoRef}
-                        className="ifu__video"
-                        playsInline
-                        muted
-                        autoPlay
-                    />
+                    {/* Live video */}
+                    <video ref={videoRef} className="ifu__video" playsInline muted autoPlay />
 
-                    {/* Hidden canvas for frame capture */}
+                    {/* Hidden canvas */}
                     <canvas ref={canvasRef} style={{ display: "none" }} />
 
-                    {/* Face guide box */}
+                    {/* Face guide overlay */}
                     <div className="ifu__overlay">
                         <div className={`ifu__guide-box ${isValid ? "ifu__guide-box--ok" : ""} ${isCapturing ? "ifu__guide-box--capturing" : ""}`} />
 
@@ -304,24 +436,100 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
                                     </div>
                                 </>
                             ) : (
-                                <span>{errorMsg || instruction}</span>
+                                <span>{(step === "error" ? errorMsg : null) || instruction}</span>
                             )}
                         </div>
 
-                        {/* LIVE SAMPLING badge */}
                         {isCapturing && <div className="ifu__badge">LIVE SAMPLING</div>}
                     </div>
 
-                    {/* CTA button */}
+                    {/* Bottom toolbar — measure + upload + flip */}
                     {!isCapturing && (
-                        <button
-                            className={`ifu__btn ifu__btn--capture ${isValid ? "ifu__btn--ready" : "ifu__btn--waiting"}`}
-                            onClick={captureFrames}
-                            disabled={!isValid}
-                        >
-                            <span className="ifu__btn-icon"><EyeIcon /></span>
-                            {isValid ? "Measure My PD" : "Waiting for face…"}
-                        </button>
+                        <div className="ifu__toolbar">
+                            {/* Upload button */}
+                            <button className="ifu__tool-btn" onClick={switchToUpload} title="Upload a photo instead">
+                                <UploadIcon />
+                                <span>Upload</span>
+                            </button>
+
+                            {/* Measure PD — primary CTA */}
+                            <button
+                                className={`ifu__btn ifu__btn--capture ${isValid ? "ifu__btn--ready" : "ifu__btn--waiting"}`}
+                                onClick={captureFrames}
+                                disabled={!isValid}
+                            >
+                                <span className="ifu__btn-icon"><EyeIcon /></span>
+                                {isValid ? "Measure PD" : "Waiting for face…"}
+                            </button>
+
+                            {/* Flip camera — only shown if >1 camera available */}
+                            {cameras.length > 1 ? (
+                                <button className="ifu__tool-btn" onClick={handleFlipCamera} title="Switch camera">
+                                    <FlipCameraIcon />
+                                    <span>Flip</span>
+                                </button>
+                            ) : (
+                                /* spacer to keep layout balanced */
+                                <div className="ifu__tool-btn ifu__tool-btn--spacer" />
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ── UPLOAD STEP ── */}
+            {step === "upload" && (
+                <div className="ifu__upload-wrap">
+                    {/* Hidden file input */}
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif,image/*"
+                        style={{ display: "none" }}
+                        onChange={handleFileSelect}
+                    />
+
+                    {isConverting ? (
+                        <div className="ifu__upload-converting">
+                            <div className="ifu__spinner" />
+                            <p>Converting HEIC image…</p>
+                        </div>
+                    ) : uploadPreview ? (
+                        /* Preview + confirm */
+                        <div className="ifu__upload-preview-wrap">
+                            <img src={uploadPreview} className="ifu__upload-preview" alt="Preview" />
+                            <div className="ifu__upload-actions">
+                                <button className="ifu__btn ifu__btn--save" onClick={submitUpload}>
+                                    <span className="ifu__btn-icon"><EyeIcon /></span>
+                                    Measure PD
+                                </button>
+                                <button className="ifu__btn ifu__btn--restart" onClick={() => {
+                                    setUploadPreview(null);
+                                    setUploadFile(null);
+                                    if (fileInputRef.current) fileInputRef.current.value = "";
+                                }}>
+                                    Choose different photo
+                                </button>
+                                <button className="ifu__btn ifu__btn--ghost" onClick={switchToCamera}>
+                                    Use camera instead
+                                </button>
+                            </div>
+                            {uploadError && <p className="ifu__upload-error">{uploadError}</p>}
+                        </div>
+                    ) : (
+                        /* Drop zone */
+                        <div className="ifu__upload-zone" onClick={() => fileInputRef.current?.click()}>
+                            <div className="ifu__upload-icon"><UploadIcon /></div>
+                            <p className="ifu__upload-title">Upload a photo</p>
+                            <p className="ifu__upload-sub">JPEG, PNG, WebP or HEIC (iPhone)<br />Look straight at the camera in the photo</p>
+                            <button className="ifu__btn ifu__btn--ready" style={{ marginTop: 16 }}>
+                                Choose photo
+                            </button>
+                            {uploadError && <p className="ifu__upload-error">{uploadError}</p>}
+                            <button className="ifu__upload-back" onClick={(e) => { e.stopPropagation(); switchToCamera(); }}>
+                                ← Back to camera
+                            </button>
+                        </div>
                     )}
                 </div>
             )}
@@ -331,27 +539,18 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
                 <div className="ifu__processing">
                     <div className="ifu__spinner" />
                     <p className="ifu__processing-label">Measuring pupil distance…</p>
-                    <p className="ifu__processing-sub">Analysing {TOTAL_FRAMES} frames</p>
+                    <p className="ifu__processing-sub">Analysing your photo</p>
                 </div>
             )}
 
             {/* ── RESULTS STEP ── */}
             {step === "results" && result && (
                 <div className="ifu__results">
-                    {/* Blurred camera-last-frame background effect */}
                     <div className="ifu__results-bg" />
-
                     <div className="ifu__results-card">
-                        {/* Icon */}
-                        <div className="ifu__results-icon">
-                            <EyeIcon />
-                        </div>
-
-                        {/* Main value */}
+                        <div className="ifu__results-icon"><EyeIcon /></div>
                         <p className="ifu__results-label">Your pupillary distance is:</p>
                         <p className="ifu__results-value">{result.overall_pd_mm} mm</p>
-
-                        {/* L / R breakdown */}
                         <div className="ifu__results-split">
                             <div className="ifu__results-eye">
                                 <span className="ifu__results-eye-label">Right</span>
@@ -363,21 +562,15 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
                                 <span className="ifu__results-eye-value">{result.left_pd_mm} mm</span>
                             </div>
                         </div>
-
-                        {/* Confidence */}
                         <p className="ifu__results-confidence">
                             Confidence: {(result.confidence_score * 100).toFixed(0)}% &nbsp;·&nbsp; ±{result.error_margin.value_mm.toFixed(1)} mm
                         </p>
-
-                        {/* Asymmetry warning */}
                         {result.asymmetry_warning && (
                             <p className="ifu__results-warning">
                                 ⚠️ Larger-than-usual L/R difference. Consider re-measuring.
                             </p>
                         )}
                     </div>
-
-                    {/* Actions */}
                     <div className="ifu__results-actions">
                         <button className="ifu__btn ifu__btn--save" onClick={() => onMeasurement?.(result)}>
                             Save my PD

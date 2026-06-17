@@ -42,6 +42,8 @@ export interface PDMeasurementResult {
     frames_rejected: number | null;
     // Age calibration (T3-3A/B)
     age_group_used: string | null;
+    // Best frame captured during measurement (base64 data URL) — not from API, added client-side
+    best_frame_dataurl?: string | null;
 }
 
 export interface ReferenceTypeOption {

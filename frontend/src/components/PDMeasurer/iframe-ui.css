@@ -1,5 +1,5 @@
 /* ============================================================
-   IframeUI — Lenskart-inspired full-screen PD measurement UI
+   IframeUI — full-screen PD measurement UI
    Used exclusively when the widget is embedded in an iframe
    (e.g. Specscart POS portal / optician portal)
    ============================================================ */
@@ -27,6 +27,7 @@
     transition: background 0.2s;
     backdrop-filter: blur(4px);
 }
+
 .ifu__close-btn:hover {
     background: rgba(255, 255, 255, 0.2);
 }
@@ -61,7 +62,8 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transform: scaleX(-1); /* mirror like a selfie cam */
+    transform: scaleX(-1);
+    /* mirror like a selfie cam */
     display: block;
 }
 
@@ -85,8 +87,9 @@
     border-radius: 20px;
     transition: border-color 0.3s ease, box-shadow 0.3s ease;
     box-shadow:
-        0 0 0 1000px rgba(0, 0, 0, 0.42), /* vignette mask */
-        inset 0 0 0 1px rgba(255,255,255,0.08);
+        0 0 0 1000px rgba(0, 0, 0, 0.42),
+        /* vignette mask */
+        inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .ifu__guide-box--ok {
@@ -105,13 +108,29 @@
 }
 
 @keyframes ifu-pulse {
-    0%, 100% { transform: scale(1);    opacity: 1;    }
-    50%       { transform: scale(1.02); opacity: 0.85; }
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.02);
+        opacity: 0.85;
+    }
 }
 
 @keyframes ifu-pulse-fast {
-    0%, 100% { opacity: 1;   }
-    50%       { opacity: 0.7; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
 }
 
 /* Instruction pill — positioned below guide box */
@@ -134,7 +153,7 @@
 .ifu__instruction--ok {
     background: rgba(61, 190, 110, 0.82);
     color: #fff;
-    border-color: rgba(255,255,255,0.25);
+    border-color: rgba(255, 255, 255, 0.25);
 }
 
 .ifu__instruction--capturing {
@@ -147,7 +166,7 @@
 .ifu__progress {
     width: 100%;
     height: 4px;
-    background: rgba(255,255,255,0.25);
+    background: rgba(255, 255, 255, 0.25);
     border-radius: 2px;
     margin-top: 8px;
     overflow: hidden;
@@ -173,18 +192,32 @@
     padding: 5px 14px;
     border-radius: 30px;
     pointer-events: none;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
     animation: ifu-badge-in 0.3s ease, ifu-pulse-soft 2s infinite;
 }
 
 @keyframes ifu-badge-in {
-    from { opacity: 0; transform: translateY(-8px); }
-    to   { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 @keyframes ifu-pulse-soft {
-    0%, 100% { opacity: 1;   }
-    50%       { opacity: 0.8; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.8;
+    }
 }
 
 /* ── CTA button (at bottom of camera view) ────────────────── */
@@ -214,6 +247,7 @@
     font-size: 0.975rem;
     transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
     border-radius: 50px;
+    padding: 10px 20px;
 }
 
 .ifu__btn:active {
@@ -229,7 +263,7 @@
     padding: 16px 40px;
     font-size: 1rem;
     white-space: nowrap;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
     z-index: 10;
 }
 
@@ -249,7 +283,7 @@
 
 .ifu__btn--waiting {
     background: rgba(150, 140, 130, 0.72);
-    color: rgba(255,255,255,0.75);
+    color: rgba(255, 255, 255, 0.75);
     cursor: not-allowed;
     backdrop-filter: blur(6px);
 }
@@ -271,13 +305,17 @@
 .ifu__spinner {
     width: 52px;
     height: 52px;
-    border: 4px solid rgba(255,255,255,0.15);
+    border: 4px solid rgba(255, 255, 255, 0.15);
     border-top-color: #3DBE6E;
     border-radius: 50%;
     animation: ifu-spin 0.9s linear infinite;
 }
 
-@keyframes ifu-spin { to { transform: rotate(360deg); } }
+@keyframes ifu-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
 
 .ifu__processing-label {
     font-size: 1.1rem;
@@ -288,7 +326,7 @@
 
 .ifu__processing-sub {
     font-size: 0.82rem;
-    color: rgba(255,255,255,0.5);
+    color: rgba(255, 255, 255, 0.5);
     margin: 0;
 }
 
@@ -313,8 +351,8 @@
     position: absolute;
     inset: 0;
     background:
-        radial-gradient(ellipse 60% 50% at 50% 30%, rgba(61,190,110,0.18) 0%, transparent 70%),
-        radial-gradient(ellipse 80% 60% at 20% 80%, rgba(79,70,229,0.12) 0%, transparent 60%);
+        radial-gradient(ellipse 60% 50% at 50% 30%, rgba(61, 190, 110, 0.18) 0%, transparent 70%),
+        radial-gradient(ellipse 80% 60% at 20% 80%, rgba(79, 70, 229, 0.12) 0%, transparent 60%);
     pointer-events: none;
 }
 
@@ -351,7 +389,7 @@
 .ifu__results-label {
     font-size: 0.95rem;
     font-weight: 400;
-    color: rgba(255,255,255,0.82);
+    color: rgba(255, 255, 255, 0.82);
     margin: 0 0 6px;
 }
 
@@ -369,8 +407,8 @@
     display: flex;
     align-items: center;
     gap: 0;
-    background: rgba(255,255,255,0.07);
-    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 14px;
     padding: 14px 28px;
     width: 100%;
@@ -391,7 +429,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: rgba(255,255,255,0.45);
+    color: rgba(255, 255, 255, 0.45);
 }
 
 .ifu__results-eye-value {
@@ -403,21 +441,21 @@
 .ifu__results-divider {
     width: 1px;
     height: 38px;
-    background: rgba(255,255,255,0.15);
+    background: rgba(255, 255, 255, 0.15);
     margin: 0 16px;
 }
 
 .ifu__results-confidence {
     font-size: 0.78rem;
-    color: rgba(255,255,255,0.45);
+    color: rgba(255, 255, 255, 0.45);
     margin: 0 0 10px;
 }
 
 .ifu__results-warning {
     font-size: 0.78rem;
     color: #fbbf24;
-    background: rgba(251,191,36,0.1);
-    border: 1px solid rgba(251,191,36,0.25);
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.25);
     border-radius: 8px;
     padding: 8px 12px;
     margin: 0 0 10px;
@@ -444,25 +482,244 @@
     background: #3DBE6E;
     color: #fff;
     font-size: 1rem;
-    box-shadow: 0 4px 18px rgba(61,190,110,0.45);
+    box-shadow: 0 4px 18px rgba(61, 190, 110, 0.45);
 }
 
 .ifu__btn--save:hover {
     background: #35a85f;
-    box-shadow: 0 6px 22px rgba(61,190,110,0.55);
+    box-shadow: 0 6px 22px rgba(61, 190, 110, 0.55);
 }
 
 .ifu__btn--restart {
     width: 100%;
     padding: 14px 32px;
     background: rgba(160, 148, 140, 0.55);
-    color: rgba(255,255,255,0.88);
+    color: rgba(255, 255, 255, 0.88);
     font-size: 0.925rem;
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
-    border: 1px solid rgba(255,255,255,0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .ifu__btn--restart:hover {
     background: rgba(160, 148, 140, 0.72);
+}
+
+/* ── Bottom toolbar (upload + measure + flip) ─────────────── */
+
+.ifu__toolbar {
+    position: absolute;
+    bottom: 20px;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    z-index: 10;
+    gap: 12px;
+}
+
+/* Side icon buttons (Upload / Flip) */
+.ifu__tool-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border-radius: 14px;
+    width: 54px;
+    height: 54px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.65rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: background 0.2s, transform 0.15s;
+    flex-shrink: 0;
+}
+
+.ifu__tool-btn svg {
+    width: 22px;
+    height: 22px;
+}
+
+.ifu__tool-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.ifu__tool-btn:active {
+    transform: scale(0.94);
+}
+
+/* Invisible spacer to keep layout centred when flip is hidden */
+.ifu__tool-btn--spacer {
+    background: transparent;
+    border-color: transparent;
+    cursor: default;
+    pointer-events: none;
+}
+
+/* Override capture button to sit in the toolbar flow */
+.ifu__toolbar .ifu__btn--capture {
+    position: static;
+    transform: none;
+    flex: 1;
+    padding: 16px 12px;
+    font-size: 0.95rem;
+    max-width: 300px;
+}
+
+.ifu__toolbar .ifu__btn--capture:active {
+    transform: scale(0.97);
+}
+
+/* ── Upload step ──────────────────────────────────────────── */
+
+.ifu__upload-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #111;
+    min-height: 520px;
+    padding: 24px 20px;
+}
+
+/* Drop zone */
+.ifu__upload-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 340px;
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 40px 28px;
+    cursor: pointer;
+    text-align: center;
+    transition: border-color 0.2s, background 0.2s;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.ifu__upload-zone:hover {
+    border-color: #3DBE6E;
+    background: rgba(61, 190, 110, 0.05);
+}
+
+.ifu__upload-icon {
+    width: 56px;
+    height: 56px;
+    background: rgba(61, 190, 110, 0.15);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #3DBE6E;
+    margin-bottom: 16px;
+}
+
+.ifu__upload-icon svg {
+    width: 28px;
+    height: 28px;
+}
+
+.ifu__upload-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 0 0 8px;
+}
+
+.ifu__upload-sub {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.45);
+    margin: 0;
+    line-height: 1.5;
+}
+
+.ifu__upload-error {
+    margin-top: 12px;
+    font-size: 0.8rem;
+    color: #f87171;
+    text-align: center;
+}
+
+.ifu__upload-back {
+    margin-top: 20px;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.45);
+    font-family: inherit;
+    font-size: 0.82rem;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 4px 0;
+}
+
+.ifu__upload-back:hover {
+    color: rgba(255, 255, 255, 0.75);
+}
+
+/* Preview + confirm */
+.ifu__upload-preview-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 340px;
+    gap: 14px;
+}
+
+.ifu__upload-preview {
+    width: 100%;
+    max-height: 320px;
+    object-fit: contain;
+    border-radius: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    background: #000;
+}
+
+.ifu__upload-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.ifu__upload-actions .ifu__btn {
+    width: 100%;
+    padding: 14px 24px;
+}
+
+/* HEIC converting spinner */
+.ifu__upload-converting {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+}
+
+/* Ghost / tertiary button */
+.ifu__btn--ghost {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.875rem;
+    padding: 12px 24px;
+}
+
+.ifu__btn--ghost:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: #fff;
 }

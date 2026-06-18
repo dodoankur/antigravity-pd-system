@@ -337,7 +337,10 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
 
             // apiEndpoint is already /api/pd/measure-batch (the default)
             const resp = await fetch(apiEndpoint, { method: "POST", body: form });
-            if (!resp.ok) throw new Error(`Server error ${resp.status}`);
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({}));
+                throw new Error(err.detail ?? `Server error ${resp.status}`);
+            }
 
             const data: PDMeasurementResult = await resp.json();
             setResult(data);
@@ -490,7 +493,7 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
             >✕</button>
 
             {/* ── CAPTURE STEP ── */}
-            {(step === "capture" || (step === "error" && !uploadFile)) && (
+            {step === "capture" && (
                 <div className="ifu__camera-wrap">
                     {/* Live video */}
                     <video ref={videoRef} className="ifu__video" playsInline muted autoPlay />
@@ -526,7 +529,7 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
                                     </div>
                                 </>
                             ) : (
-                                <span>{(step === "error" ? errorMsg : null) || instruction}</span>
+                                <span>{instruction}</span>
                             )}
                         </div>
 
@@ -667,6 +670,29 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
                         </button>
                         <button className="ifu__btn ifu__btn--restart" onClick={handleRestart}>
                             Restart measurement
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* ── ERROR STEP ── */}
+            {step === "error" && (
+                <div className="ifu__error-wrap">
+                    <div className="ifu__error-icon">⚠️</div>
+                    <p className="ifu__error-title">Measurement failed</p>
+                    <p className="ifu__error-msg">{errorMsg}</p>
+                    <div className="ifu__error-actions">
+                        <button className="ifu__btn ifu__btn--save" onClick={handleRestart}>
+                            📷 Retake with camera
+                        </button>
+                        <button className="ifu__btn ifu__btn--ghost" onClick={() => {
+                            setStep("upload");
+                            setErrorMsg("");
+                            setUploadPreview(null);
+                            setUploadFile(null);
+                            setUploadError("");
+                        }}>
+                            🖼 Upload a photo instead
                         </button>
                     </div>
                 </div>

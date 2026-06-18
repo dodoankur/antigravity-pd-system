@@ -740,3 +740,44 @@
     background: rgba(255, 255, 255, 0.07);
     color: #fff;
 }
+
+/* ── ERROR STEP ─────────────────────────────────────────────────────────── */
+.ifu__error-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    text-align: center;
+    gap: 12px;
+}
+
+.ifu__error-icon {
+    font-size: 3rem;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.ifu__error-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+}
+
+.ifu__error-msg {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.75);
+    margin: 0 0 8px;
+    max-width: 320px;
+    line-height: 1.5;
+}
+
+.ifu__error-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    max-width: 280px;
+}

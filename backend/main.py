@@ -543,6 +543,15 @@ async def _process_single_image(
 
         pil_image = Image.open(io.BytesIO(contents))
 
+        # Apply EXIF rotation — iPhone camera photos are stored sideways with
+        # an EXIF Orientation tag. Without this, MediaPipe sees a rotated face
+        # and fails pose/symmetry checks → 422 on every iPhone camera photo.
+        try:
+            from PIL import ImageOps
+            pil_image = ImageOps.exif_transpose(pil_image)
+        except Exception:
+            pass  # older Pillow or no EXIF — safe to ignore
+
         # Normalise colour space
         if pil_image.mode != "RGB":
             pil_image = pil_image.convert("RGB")

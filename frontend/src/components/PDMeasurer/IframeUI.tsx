@@ -65,7 +65,7 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
 
     // MediaPipe refs
     const faceMeshRef    = useRef<any>(null);
-    const cameraRef      = useRef<any>(null);
+    const rafRef         = useRef<number>(0);       // replaces MediaPipe Camera utility
     const capturedFrames = useRef<string[]>([]);
     const warmupCount    = useRef<number>(0);
     const TOTAL_FRAMES   = 10;
@@ -112,7 +112,7 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
     // ── Camera start / stop ───────────────────────────────────────────────────
 
     const stopCamera = useCallback(() => {
-        cameraRef.current?.stop();
+        cancelAnimationFrame(rafRef.current);
         streamRef.current?.getTracks().forEach(t => t.stop());
         streamRef.current = null;
     }, []);
@@ -205,16 +205,19 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
 
         faceMeshRef.current = fm;
 
-        const cam = new win.Camera(videoRef.current, {
-            onFrame: async () => {
-                if (videoRef.current && faceMeshRef.current) {
-                    await faceMeshRef.current.send({ image: videoRef.current });
-                }
-            },
-            width: 1280, height: 720,
-        });
-        cam.start();
-        cameraRef.current = cam;
+        // ── RAF loop: feed frames to FaceMesh ourselves ───────────────────────
+        // We own the stream via startCamera() so we must NOT use win.Camera —
+        // that utility calls getUserMedia() internally and always re-opens the
+        // front camera, overwriting whatever camera we selected.
+        cancelAnimationFrame(rafRef.current);
+        const tick = async () => {
+            const video = videoRef.current;
+            if (video && !video.paused && !video.ended && faceMeshRef.current) {
+                await faceMeshRef.current.send({ image: video });
+            }
+            rafRef.current = requestAnimationFrame(tick);
+        };
+        rafRef.current = requestAnimationFrame(tick);
     }, [mediapipeBasePath, isCapturing]);
 
     useEffect(() => {
@@ -238,9 +241,11 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
         warmupCount.current = 0;
         setIsValid(false);
         setInstruction("Position your face inside the frame");
+        // Stop the RAF loop and current stream before switching
+        cancelAnimationFrame(rafRef.current);
         await startCamera(nextIdx, cameras);
-        // Re-init MediaPipe on the new stream
-        setTimeout(() => initFaceMesh(), 300);
+        // Restart the RAF feed loop on the new stream
+        initFaceMesh();
     }, [activeCamIdx, cameras, startCamera, initFaceMesh]);
 
     // ── Capture frames ────────────────────────────────────────────────────────

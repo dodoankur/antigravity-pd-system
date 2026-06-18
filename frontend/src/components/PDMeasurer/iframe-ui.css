@@ -93,7 +93,7 @@
     position: relative;
 }
 
-/* Eye-alignment guide line — dashed horizontal at ~38% from top (eye level) */
+/* Eye-alignment guide line — solid horizontal at ~38% from top (eye level) */
 .ifu__guide-box::after {
     content: "";
     position: absolute;
@@ -101,12 +101,12 @@
     right: 10%;
     top: 38%;
     height: 0;
-    border-top: 1.5px dashed rgba(255, 255, 255, 0.35);
+    border-top: 1.5px solid rgba(255, 255, 255, 0.55);
     transition: border-color 0.3s ease;
 }
 
 .ifu__guide-box--ok::after {
-    border-color: rgba(61, 190, 110, 0.6);
+    border-color: rgba(61, 190, 110, 0.75);
 }
 
 .ifu__guide-box--ok {

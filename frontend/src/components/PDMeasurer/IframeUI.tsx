@@ -80,15 +80,16 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
 
     const enumerateCameras = useCallback(async () => {
         try {
-            // Only relevant on touch devices (mobile/tablet) — desktops never have a back camera
-            const isTouch = navigator.maxTouchPoints > 0;
-            if (!isTouch) {
-                setCameras([]);
-                return;
-            }
             const devices = await navigator.mediaDevices.enumerateDevices();
             const videoCams = devices.filter(d => d.kind === "videoinput");
-            setCameras(videoCams);
+
+            // Only show Flip when at least one camera is a back/environment camera.
+            // Desktop webcams (even on touch-screen laptops) never expose a back camera,
+            // so this correctly hides Flip on all desktops while showing it on phones/tablets.
+            const hasBackCamera = videoCams.some(d =>
+                /back|rear|environment/i.test(d.label)
+            );
+            setCameras(hasBackCamera ? videoCams : []);
         } catch {
             // silently ignore
         }

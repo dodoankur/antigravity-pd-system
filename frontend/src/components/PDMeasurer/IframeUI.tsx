@@ -81,7 +81,21 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
     const enumerateCameras = useCallback(async () => {
         try {
             const devices = await navigator.mediaDevices.enumerateDevices();
-            const videoCams = devices.filter(d => d.kind === "videoinput");
+            let videoCams = devices.filter(d => d.kind === "videoinput");
+
+            // In a cross-origin iframe, browsers return blank labels until camera
+            // permission has been granted. If labels are empty, request a brief
+            // getUserMedia stream to unlock them, then re-enumerate.
+            if (videoCams.length > 0 && videoCams.every(d => d.label === "")) {
+                let tempStream: MediaStream | null = null;
+                try {
+                    tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    const devices2 = await navigator.mediaDevices.enumerateDevices();
+                    videoCams = devices2.filter(d => d.kind === "videoinput");
+                } finally {
+                    tempStream?.getTracks().forEach(t => t.stop());
+                }
+            }
 
             // Only show Flip when at least one camera is a back/environment camera.
             // Desktop webcams (even on touch-screen laptops) never expose a back camera,

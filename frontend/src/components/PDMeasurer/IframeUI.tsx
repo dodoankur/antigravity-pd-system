@@ -193,8 +193,8 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
 
             // Calibrated thresholds for normSize (diagonal ratio):
             // arm's length ≈ 0.19–0.28 on both desktop and portrait mobile
-            const minFace = 0.17;
-            const maxFace = 0.28;
+            const minFace = 0.14;
+            const maxFace = 0.26;
 
             if (normSize < minFace) {
                 setIsValid(false); setInstruction(`Move closer — about an arm's length away`); return;

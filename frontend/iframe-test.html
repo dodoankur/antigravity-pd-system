@@ -555,7 +555,7 @@
         <div class="topbar-actions">
             <button class="topbar-btn topbar-btn--secondary" onclick="reloadIframe()">↺ Reload</button>
             <button class="topbar-btn topbar-btn--primary"
-                onclick="window.open('http://localhost:5173/embed','_blank')">Open ↗</button>
+                onclick="window.open(window.location.origin + '/embed','_blank')">Open ↗</button>
             <button class="topbar-btn topbar-btn--toggle" onclick="toggleSidebar()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round">
@@ -586,7 +586,7 @@
 
             <div class="device-frame-wrap">
                 <div class="device-frame device-frame--mobile" id="device-frame">
-                    <iframe id="pd-embed-iframe" src="http://localhost:5173/embed" allow="camera; microphone"
+                    <iframe id="pd-embed-iframe" src="/embed" allow="camera; microphone"
                         allowfullscreen>
                     </iframe>
                 </div>

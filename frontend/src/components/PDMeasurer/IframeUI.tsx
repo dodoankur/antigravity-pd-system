@@ -170,10 +170,11 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
             (window as any).__pdFaceW   = faceW;
             (window as any).__pdActualW = actualW;
 
+            // faceW is a normalised 0-1 ratio from MediaPipe landmarks —
+            // it is resolution-independent, so no pixel-width scaling needed.
             // Calibrated Jun 2026: arm's length faceW≈0.217, close≈0.397
-            const scale   = 1280 / actualW;
-            const minFace = 0.18 * scale;
-            const maxFace = 0.35 * scale;
+            const minFace = 0.18;
+            const maxFace = 0.35;
 
             if (faceW < minFace) {
                 setIsValid(false); setInstruction(`Move closer — about an arm's length away`); return;

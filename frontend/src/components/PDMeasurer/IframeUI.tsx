@@ -404,7 +404,6 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
     // ── Reset ──────────────────────────────────────────────────────────────────
 
     const handleRestart = useCallback(() => {
-        setStep("capture");
         setResult(null);
         setErrorMsg("");
         setUploadPreview(null);
@@ -416,7 +415,13 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
         warmupCount.current    = 0;
         capturedFrames.current = [];
         setInstruction("Position your face inside the frame");
-        startCamera(activeCamIdx, cameras).then(() => initFaceMesh());
+        // Set step FIRST so React remounts the <video> element,
+        // then start camera after the DOM has updated.
+        setStep("capture");
+        setTimeout(async () => {
+            await startCamera(activeCamIdx, cameras);
+            initFaceMesh();
+        }, 50);
     }, [startCamera, initFaceMesh, activeCamIdx, cameras]);
 
     const switchToUpload = useCallback(() => {
@@ -433,16 +438,14 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
         setUploadPreview(null);
         setUploadFile(null);
         setUploadError("");
-        setStep("capture");
         warmupCount.current = 0;
-        startCamera(activeCamIdx, cameras).then(() => {
-            const interval = setInterval(() => {
-                if ((window as any).FaceMesh && (window as any).Camera) {
-                    clearInterval(interval);
-                    initFaceMesh();
-                }
-            }, 200);
-        });
+        // Set step first so React remounts the <video> element,
+        // then start camera after the DOM has updated.
+        setStep("capture");
+        setTimeout(async () => {
+            await startCamera(activeCamIdx, cameras);
+            initFaceMesh();
+        }, 50);
     }, [startCamera, initFaceMesh, activeCamIdx, cameras]);
 
     // ── Render ─────────────────────────────────────────────────────────────────

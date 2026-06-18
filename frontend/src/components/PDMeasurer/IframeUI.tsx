@@ -174,27 +174,25 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
             const actualH = videoRef.current?.videoHeight ?? 720;
 
             // faceW/faceH are normalised 0-1 fractions of frame width/height.
-            // On portrait mobile the frame is narrower than tall, so faceW alone
-            // is much larger at the same physical distance than on landscape desktop.
-            // Fix: use the face diagonal as a fraction of the frame diagonal —
-            // this is orientation-independent (same value portrait or landscape).
-            const frameDiag = Math.sqrt(actualW * actualW + actualH * actualH);
-            const faceDiag  = Math.sqrt(
-                (faceW * actualW) * (faceW * actualW) +
-                (faceH * actualH) * (faceH * actualH)
-            );
-            const normSize = faceDiag / frameDiag;
+            // Solution 3: use faceH (face height as fraction of frame height).
+            // Face height is stable across portrait/landscape and FOV differences
+            // because vertical FOV varies less between desktop and mobile cameras.
+            // Desktop webcam & mobile front camera both show consistent faceH
+            // at the same physical distance.
+            const normSize = faceH;   // alias kept so debug overlay & thresholds need no rename
 
             (window as any).__pdFaceW    = faceW;
+            (window as any).__pdFaceH    = faceH;
             (window as any).__pdNormSize = normSize;
             (window as any).__pdActualW  = actualW;
+            (window as any).__pdActualH  = actualH;
 
             if (debugMode) setDebugInfo({ normSize, faceW, faceH, w: actualW, h: actualH });
 
-            // Calibrated thresholds for normSize (diagonal ratio):
-            // arm's length ≈ 0.19–0.28 on both desktop and portrait mobile
-            const minFace = 0.13;
-            const maxFace = 0.30;
+            // Calibrated thresholds for faceH (face height fraction of frame height):
+            // arm's length ≈ 0.40–0.55 on both desktop and portrait mobile
+            const minFace = 0.38;
+            const maxFace = 0.60;
 
             if (normSize < minFace) {
                 setIsValid(false); setInstruction(`Move closer — about an arm's length away`); return;
@@ -509,7 +507,7 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
                                 fontSize: 13, padding: "6px 10px", borderRadius: 6, lineHeight: 1.7,
                                 pointerEvents: "none",
                             }}>
-                                <div>normSize: <b>{debugInfo.normSize.toFixed(4)}</b> (min 0.19 / max 0.32)</div>
+                                <div>faceH (normSize): <b>{debugInfo.normSize.toFixed(4)}</b> (min 0.38 / max 0.60)</div>
                                 <div>faceW: {debugInfo.faceW.toFixed(4)} · faceH: {debugInfo.faceH.toFixed(4)}</div>
                                 <div>frame: {debugInfo.w}×{debugInfo.h}</div>
                             </div>

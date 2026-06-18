@@ -748,30 +748,32 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 32px 24px;
+    padding: 40px 28px;
     text-align: center;
-    gap: 12px;
+    gap: 0;
 }
 
 .ifu__error-icon {
-    font-size: 3rem;
+    font-size: 3.5rem;
     line-height: 1;
-    margin-bottom: 4px;
+    margin-bottom: 18px;
+    filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.4));
 }
 
 .ifu__error-title {
-    font-size: 1.2rem;
+    font-size: 1.35rem;
     font-weight: 700;
     color: #fff;
-    margin: 0;
+    margin: 0 0 10px;
+    letter-spacing: -0.01em;
 }
 
-.ifu__error-msg {
-    font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.75);
-    margin: 0 0 8px;
-    max-width: 320px;
-    line-height: 1.5;
+.ifu__error-tip {
+    font-size: 0.92rem;
+    color: rgba(255, 255, 255, 0.60);
+    margin: 0 0 32px;
+    max-width: 280px;
+    line-height: 1.6;
 }
 
 .ifu__error-actions {

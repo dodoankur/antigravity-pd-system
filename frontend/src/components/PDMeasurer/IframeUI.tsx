@@ -32,6 +32,24 @@ const FlipCameraIcon = () => (
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 
+// ── Friendly error mapper ──────────────────────────────────────────────────
+function friendlyError(raw: string): { msg: string; tip: string } {
+    const r = raw.toLowerCase();
+    if (r.includes("pitch") || r.includes("tilt") || r.includes("yaw"))
+        return { msg: "Head angle too steep", tip: "Hold the phone at eye level and look straight into the camera." };
+    if (r.includes("blink") || r.includes("eyes open"))
+        return { msg: "Eyes not fully open", tip: "Keep your eyes wide open and look directly at the camera." };
+    if (r.includes("blur") || r.includes("quality"))
+        return { msg: "Photo too blurry", tip: "Hold still and ensure good lighting. Avoid moving while capturing." };
+    if (r.includes("no face") || r.includes("face detected"))
+        return { msg: "No face found", tip: "Make sure your whole face is visible and well-lit." };
+    if (r.includes("symmetry"))
+        return { msg: "Face not centred", tip: "Look straight ahead and centre your face in the guide box." };
+    if (r.includes("heic") || r.includes("convert"))
+        return { msg: "Could not read photo", tip: "Try taking a new photo or uploading a JPEG instead." };
+    return { msg: "Measurement failed", tip: "Please try again with good lighting and face the camera directly." };
+}
+
 export const IframeUI: React.FC<PDMeasurerProps> = ({
     apiEndpoint = `${API_BASE}/api/pd/measure-batch`,
     onMeasurement,
@@ -676,27 +694,30 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
             )}
 
             {/* ── ERROR STEP ── */}
-            {step === "error" && (
-                <div className="ifu__error-wrap">
-                    <div className="ifu__error-icon">⚠️</div>
-                    <p className="ifu__error-title">Measurement failed</p>
-                    <p className="ifu__error-msg">{errorMsg}</p>
-                    <div className="ifu__error-actions">
-                        <button className="ifu__btn ifu__btn--save" onClick={handleRestart}>
-                            📷 Retake with camera
-                        </button>
-                        <button className="ifu__btn ifu__btn--ghost" onClick={() => {
-                            setStep("upload");
-                            setErrorMsg("");
-                            setUploadPreview(null);
-                            setUploadFile(null);
-                            setUploadError("");
-                        }}>
-                            🖼 Upload a photo instead
-                        </button>
+            {step === "error" && (() => {
+                const { msg, tip } = friendlyError(errorMsg);
+                return (
+                    <div className="ifu__error-wrap">
+                        <div className="ifu__error-icon">⚠️</div>
+                        <p className="ifu__error-title">{msg}</p>
+                        <p className="ifu__error-tip">{tip}</p>
+                        <div className="ifu__error-actions">
+                            <button className="ifu__btn ifu__btn--save" onClick={handleRestart}>
+                                📷 Retake with camera
+                            </button>
+                            <button className="ifu__btn ifu__btn--ghost" onClick={() => {
+                                setStep("upload");
+                                setErrorMsg("");
+                                setUploadPreview(null);
+                                setUploadFile(null);
+                                setUploadError("");
+                            }}>
+                                🖼 Upload a photo instead
+                            </button>
+                        </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
         </div>
     );
 };

@@ -90,6 +90,23 @@
         0 0 0 1000px rgba(0, 0, 0, 0.42),
         /* vignette mask */
         inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    position: relative;
+}
+
+/* Eye-alignment guide line — dashed horizontal at ~38% from top (eye level) */
+.ifu__guide-box::after {
+    content: "";
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    top: 38%;
+    height: 0;
+    border-top: 1.5px dashed rgba(255, 255, 255, 0.35);
+    transition: border-color 0.3s ease;
+}
+
+.ifu__guide-box--ok::after {
+    border-color: rgba(61, 190, 110, 0.6);
 }
 
 .ifu__guide-box--ok {

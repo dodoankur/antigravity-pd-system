@@ -242,15 +242,38 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
     }, [mediapipeBasePath, isCapturing]);
 
     useEffect(() => {
-        enumerateCameras().then(async () => {
+        const init = async () => {
+            // Check if camera permission already granted via Permissions API
+            // (supported on Chrome/Edge; Safari falls back gracefully)
+            let alreadyGranted = false;
+            try {
+                const status = await navigator.permissions.query({ name: "camera" as PermissionName });
+                alreadyGranted = status.state === "granted";
+            } catch {
+                // Permissions API not supported (Safari) — proceed normally
+            }
+
+            // If already granted, skip browser prompt by calling getUserMedia
+            // immediately (browser honours the stored permission silently).
+            // If not yet granted, the prompt fires once; browser remembers it
+            // for the origin so subsequent page loads are silent too.
+            await enumerateCameras();
             await startCamera(0);
+
+            // Wait for FaceMesh to load then init
             const interval = setInterval(() => {
-                if ((window as any).FaceMesh && (window as any).Camera) {
+                if ((window as any).FaceMesh) {
                     clearInterval(interval);
                     initFaceMesh();
                 }
             }, 200);
-        });
+
+            // Store that permission was granted so we know on next load
+            if (!alreadyGranted) {
+                try { localStorage.setItem("pd_cam_granted", "1"); } catch { /* ignore */ }
+            }
+        };
+        init();
         return () => stopCamera();
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

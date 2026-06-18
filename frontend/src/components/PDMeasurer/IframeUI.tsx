@@ -191,11 +191,11 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
 
             // Calibrated thresholds for faceH (face height fraction of frame height):
             // Real measured values (Jun 2026):
-            //   arm's length → desktop: 0.44, mobile: 0.42  (target GREEN zone)
+            //   arm's length → desktop: 0.44–0.55, mobile: 0.42  (target GREEN zone)
             //   too close    → desktop: 0.65, mobile: 0.49
-            //   too far      → desktop: 0.29, mobile: 0.15
-            const minFace = 0.35;   // comfortably below arm's-length 0.42
-            const maxFace = 0.47;   // just below mobile too-close 0.49
+            //   too far      → desktop: 0.30, mobile: 0.20
+            const minFace = 0.30;   // below desktop too-far(0.30) and mobile too-far(0.20)
+            const maxFace = 0.47;   // just below mobile too-close(0.49)
 
             if (normSize < minFace) {
                 setIsValid(false); setInstruction(`Move closer — about an arm's length away`); return;
@@ -510,7 +510,7 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
                                 fontSize: 13, padding: "6px 10px", borderRadius: 6, lineHeight: 1.7,
                                 pointerEvents: "none",
                             }}>
-                                <div>faceH (normSize): <b>{debugInfo.normSize.toFixed(4)}</b> (min 0.35 / max 0.47)</div>
+                                <div>faceH (normSize): <b>{debugInfo.normSize.toFixed(4)}</b> (min 0.30 / max 0.47)</div>
                                 <div>faceW: {debugInfo.faceW.toFixed(4)} · faceH: {debugInfo.faceH.toFixed(4)}</div>
                                 <div>frame: {debugInfo.w}×{debugInfo.h}</div>
                             </div>

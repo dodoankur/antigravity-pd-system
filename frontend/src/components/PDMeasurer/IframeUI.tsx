@@ -165,21 +165,35 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
             const xs   = lms.map((l: any) => l.x);
             const ys   = lms.map((l: any) => l.y);
             const faceW   = Math.max(...xs) - Math.min(...xs);
-            const actualW = videoRef.current?.videoWidth ?? 1280;
+            const faceH   = Math.max(...ys) - Math.min(...ys);
+            const actualW = videoRef.current?.videoWidth  ?? 1280;
+            const actualH = videoRef.current?.videoHeight ?? 720;
 
-            (window as any).__pdFaceW   = faceW;
-            (window as any).__pdActualW = actualW;
+            // faceW/faceH are normalised 0-1 fractions of frame width/height.
+            // On portrait mobile the frame is narrower than tall, so faceW alone
+            // is much larger at the same physical distance than on landscape desktop.
+            // Fix: use the face diagonal as a fraction of the frame diagonal —
+            // this is orientation-independent (same value portrait or landscape).
+            const frameDiag = Math.sqrt(actualW * actualW + actualH * actualH);
+            const faceDiag  = Math.sqrt(
+                (faceW * actualW) * (faceW * actualW) +
+                (faceH * actualH) * (faceH * actualH)
+            );
+            const normSize = faceDiag / frameDiag;
 
-            // faceW is a normalised 0-1 ratio from MediaPipe landmarks —
-            // it is resolution-independent, so no pixel-width scaling needed.
-            // Calibrated Jun 2026: arm's length faceW≈0.217, close≈0.397
-            const minFace = 0.18;
-            const maxFace = 0.35;
+            (window as any).__pdFaceW    = faceW;
+            (window as any).__pdNormSize = normSize;
+            (window as any).__pdActualW  = actualW;
 
-            if (faceW < minFace) {
+            // Calibrated thresholds for normSize (diagonal ratio):
+            // arm's length ≈ 0.19–0.28 on both desktop and portrait mobile
+            const minFace = 0.19;
+            const maxFace = 0.32;
+
+            if (normSize < minFace) {
                 setIsValid(false); setInstruction(`Move closer — about an arm's length away`); return;
             }
-            if (faceW > maxFace) {
+            if (normSize > maxFace) {
                 setIsValid(false); setInstruction(`Too close — move back a little`); return;
             }
 

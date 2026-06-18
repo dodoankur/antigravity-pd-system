@@ -80,6 +80,12 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
 
     const enumerateCameras = useCallback(async () => {
         try {
+            // Only relevant on touch devices (mobile/tablet) — desktops never have a back camera
+            const isTouch = navigator.maxTouchPoints > 0;
+            if (!isTouch) {
+                setCameras([]);
+                return;
+            }
             const devices = await navigator.mediaDevices.enumerateDevices();
             const videoCams = devices.filter(d => d.kind === "videoinput");
             setCameras(videoCams);

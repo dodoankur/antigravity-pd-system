@@ -1,0 +1,10 @@
+node_modules
+dist
+.DS_Store
+
+# Local env — never commit (has localhost secrets)
+.env
+.env.local
+
+# Production env IS committed so Vercel can use it at build time
+# .env.production  ← intentionally NOT gitignored

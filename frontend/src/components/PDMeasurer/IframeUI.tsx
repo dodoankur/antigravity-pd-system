@@ -30,8 +30,10 @@ const FlipCameraIcon = () => (
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
+
 export const IframeUI: React.FC<PDMeasurerProps> = ({
-    apiEndpoint = "/api/pd/measure-batch",
+    apiEndpoint = `${API_BASE}/api/pd/measure-batch`,
     onMeasurement,
     onError,
     mediapipeBasePath = "/mediapipe/face_mesh",

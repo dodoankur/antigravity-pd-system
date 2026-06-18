@@ -53,6 +53,10 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
     const [isCapturing,     setIsCapturing]     = useState<boolean>(false);
     const [captureProgress, setCaptureProgress] = useState<number>(0);
 
+    // Debug overlay — enabled via ?debug=1 in URL
+    const debugMode = new URLSearchParams(window.location.search).get("debug") === "1";
+    const [debugInfo, setDebugInfo] = useState({ normSize: 0, faceW: 0, faceH: 0, w: 0, h: 0 });
+
     // Camera flip state
     const [cameras,        setCameras]        = useState<MediaDeviceInfo[]>([]);
     const [activeCamIdx,   setActiveCamIdx]   = useState<number>(0);
@@ -184,6 +188,8 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
             (window as any).__pdFaceW    = faceW;
             (window as any).__pdNormSize = normSize;
             (window as any).__pdActualW  = actualW;
+
+            if (debugMode) setDebugInfo({ normSize, faceW, faceH, w: actualW, h: actualH });
 
             // Calibrated thresholds for normSize (diagonal ratio):
             // arm's length ≈ 0.19–0.28 on both desktop and portrait mobile
@@ -468,6 +474,20 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
                     {/* Face guide overlay */}
                     <div className="ifu__overlay">
                         <div className={`ifu__guide-box ${isValid ? "ifu__guide-box--ok" : ""} ${isCapturing ? "ifu__guide-box--capturing" : ""}`} />
+
+                        {/* Debug overlay — visible only when ?debug=1 */}
+                        {debugMode && (
+                            <div style={{
+                                position: "absolute", top: 8, left: 8, zIndex: 99,
+                                background: "rgba(0,0,0,0.72)", color: "#0f0", fontFamily: "monospace",
+                                fontSize: 13, padding: "6px 10px", borderRadius: 6, lineHeight: 1.7,
+                                pointerEvents: "none",
+                            }}>
+                                <div>normSize: <b>{debugInfo.normSize.toFixed(4)}</b> (min 0.19 / max 0.32)</div>
+                                <div>faceW: {debugInfo.faceW.toFixed(4)} · faceH: {debugInfo.faceH.toFixed(4)}</div>
+                                <div>frame: {debugInfo.w}×{debugInfo.h}</div>
+                            </div>
+                        )}
 
                         {/* Instruction pill */}
                         <div className={`ifu__instruction ${isValid ? "ifu__instruction--ok" : ""} ${isCapturing ? "ifu__instruction--capturing" : ""}`}>

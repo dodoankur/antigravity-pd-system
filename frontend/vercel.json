@@ -1,38 +1,29 @@
 {
+    "rewrites": [
+        { "source": "/",                "destination": "/iframe-test.html" },
+        { "source": "/old-version",     "destination": "/old-version.html" },
+        { "source": "/embed",           "destination": "/embed.html" },
+        { "source": "/iframe-test",     "destination": "/iframe-test.html" }
+    ],
     "headers": [
         {
             "source": "/mediapipe/(.*)",
             "headers": [
-                {
-                    "key": "Cache-Control",
-                    "value": "public, max-age=31536000, immutable"
-                },
-                {
-                    "key": "Access-Control-Allow-Origin",
-                    "value": "*"
-                }
+                { "key": "Cache-Control",               "value": "public, max-age=31536000, immutable" },
+                { "key": "Access-Control-Allow-Origin", "value": "*" }
             ]
         },
         {
             "source": "/(.*).wasm",
             "headers": [
-                {
-                    "key": "Content-Type",
-                    "value": "application/wasm"
-                },
-                {
-                    "key": "Cache-Control",
-                    "value": "public, max-age=31536000, immutable"
-                }
+                { "key": "Content-Type",  "value": "application/wasm" },
+                { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
             ]
         },
         {
             "source": "/(.*).data",
             "headers": [
-                {
-                    "key": "Cache-Control",
-                    "value": "public, max-age=31536000, immutable"
-                }
+                { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
             ]
         }
     ]

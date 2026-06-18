@@ -194,8 +194,8 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
             //   arm's length → desktop: 0.44–0.55, mobile: 0.42  (target GREEN zone)
             //   too close    → desktop: 0.65, mobile: 0.49
             //   too far      → desktop: 0.30, mobile: 0.20
-            const minFace = 0.30;   // below desktop too-far(0.30) and mobile too-far(0.20)
-            const maxFace = 0.55;   // just below mobile too-close(0.49) → desktop too-close(0.65)
+            const minFace = 0.20;   // below desktop too-far(0.30) and mobile too-far(0.20)
+            const maxFace = 0.50;   // just above mobile too-close(0.49)
 
             if (normSize < minFace) {
                 setIsValid(false); setInstruction(`Move closer — about an arm's length away`); return;
@@ -510,7 +510,7 @@ export const IframeUI: React.FC<PDMeasurerProps> = ({
                                 fontSize: 13, padding: "6px 10px", borderRadius: 6, lineHeight: 1.7,
                                 pointerEvents: "none",
                             }}>
-                                <div>faceH (normSize): <b>{debugInfo.normSize.toFixed(4)}</b> (min 0.30 / max 0.55)</div>
+                                <div>faceH (normSize): <b>{debugInfo.normSize.toFixed(4)}</b> (min 0.20 / max 0.50)</div>
                                 <div>faceW: {debugInfo.faceW.toFixed(4)} · faceH: {debugInfo.faceH.toFixed(4)}</div>
                                 <div>frame: {debugInfo.w}×{debugInfo.h}</div>
                             </div>

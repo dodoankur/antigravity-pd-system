@@ -115,6 +115,16 @@
             color: var(--bg);
         }
 
+        .topbar-btn--purple {
+            background: #7c3aed;
+            color: #fff;
+            border: none;
+        }
+
+        .topbar-btn--purple:hover {
+            background: #6d28d9;
+        }
+
         .topbar-btn--secondary {
             background: var(--border);
             color: var(--text);
@@ -390,13 +400,71 @@
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.6);
-            z-index: 80;
-            backdrop-filter: blur(2px);
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 40;
         }
 
         .sidebar-overlay.open {
             display: block;
+        }
+
+        /* ── Tab overlay ───────────────────────────────────────────────────── */
+        .tab-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tab-overlay__card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 40px 32px;
+            max-width: 380px;
+            width: 90%;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .tab-overlay__icon {
+            font-size: 2.5rem;
+            line-height: 1;
+        }
+
+        .tab-overlay__title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .tab-overlay__sub {
+            font-size: 0.85rem;
+            color: var(--subtext);
+            line-height: 1.5;
+        }
+
+        .tab-overlay__close-btn {
+            margin-top: 8px;
+            padding: 10px 24px;
+            background: var(--red);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .tab-overlay__close-btn:hover {
+            opacity: 0.85;
         }
 
         /* ─────────────────────────────────────────────
@@ -537,6 +605,16 @@
     <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 
     <!-- ── Top bar ── -->
+    <!-- ── Tab overlay ──────────────────────────────────────────────────── -->
+    <div id="tab-overlay" class="tab-overlay" style="display:none;">
+        <div class="tab-overlay__card">
+            <div class="tab-overlay__icon">↗</div>
+            <h2 class="tab-overlay__title">PD Measurement open in new tab</h2>
+            <p class="tab-overlay__sub" id="tab-overlay-status">Complete your scan in the new tab. Results will appear here automatically.</p>
+            <button class="tab-overlay__close-btn" onclick="closeTabOverlay()">✕ Close Tab</button>
+        </div>
+    </div>
+
     <div class="topbar">
         <div class="topbar-title">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#89b4fa" stroke-width="2"
@@ -549,8 +627,7 @@
         </div>
         <div class="topbar-actions">
             <button class="topbar-btn topbar-btn--secondary" onclick="reloadIframe()">↺ Reload</button>
-            <button class="topbar-btn topbar-btn--primary"
-                onclick="window.open(window.location.origin + '/embed','_blank')">Open ↗</button>
+            <button class="topbar-btn topbar-btn--purple" onclick="openInTab()">Open Tab ↗</button>
             <button class="topbar-btn topbar-btn--toggle" onclick="toggleSidebar()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round">
@@ -671,6 +748,56 @@
             if (window.innerWidth > 900) closeSidebar();
         });
 
+        // ── Open-in-Tab integration ────────────────────────────────────────────
+
+        let _pdTab = null;
+        let _tabPollTimer = null;
+
+        function openInTab() {
+            // If already open, just focus it
+            if (_pdTab && !_pdTab.closed) {
+                _pdTab.focus();
+                return;
+            }
+
+            const url = window.location.origin + '/embed';
+            _pdTab = window.open(url, '_blank');
+
+            if (!_pdTab) {
+                addLog('error', 'Popup blocked — please allow popups for this site');
+                return;
+            }
+
+            // Show overlay
+            document.getElementById('tab-overlay').style.display = 'flex';
+            document.getElementById('tab-overlay-status').textContent =
+                'Complete your scan in the new tab. Results will appear here automatically.';
+            addLog('info', 'Opened /embed in new tab');
+
+            // Poll every 500 ms to detect manual tab close
+            _tabPollTimer = setInterval(function () {
+                if (_pdTab && _pdTab.closed) {
+                    _dismissTabOverlay();
+                    addLog('info', 'Tab closed by user');
+                }
+            }, 500);
+        }
+
+        function closeTabOverlay() {
+            if (_pdTab && !_pdTab.closed) {
+                _pdTab.close();
+                addLog('info', 'Tab closed via overlay button');
+            }
+            _dismissTabOverlay();
+        }
+
+        function _dismissTabOverlay() {
+            clearInterval(_tabPollTimer);
+            _tabPollTimer = null;
+            _pdTab = null;
+            document.getElementById('tab-overlay').style.display = 'none';
+        }
+
         // ── Reload iframe ──────────────────────────────────────────────────────
 
         function reloadIframe() {
@@ -700,6 +827,7 @@
             if (data && data.type === 'PD_RESULT') {
                 addLog('pd', `PD_RESULT — Overall: ${data.overall_pd_mm}mm  R: ${data.right_pd_mm}mm  L: ${data.left_pd_mm}mm`);
                 renderResult(data);
+                _dismissTabOverlay();
                 // Auto-open sidebar on mobile so result is visible
                 if (window.innerWidth <= 900) openSidebar();
             } else if (data && data.type === 'PD_CLOSE') {
@@ -724,6 +852,22 @@
                     <span class="result-val">${data.left_pd_mm} mm</span>
                 </div>
             `;
+        }
+
+        // ── BroadcastChannel fallback (tab → parent, same origin) ─────────────
+        try {
+            const bc = new BroadcastChannel('pd_result');
+            bc.onmessage = function (e) {
+                const data = e.data;
+                if (data && data.type === 'PD_RESULT') {
+                    addLog('pd', `[tab] PD_RESULT — Overall: ${data.overall_pd_mm}mm  R: ${data.right_pd_mm}mm  L: ${data.left_pd_mm}mm`);
+                    renderResult(data);
+                    _dismissTabOverlay();
+                    if (window.innerWidth <= 900) openSidebar();
+                }
+            };
+        } catch (e) {
+            // BroadcastChannel not supported — window.opener.postMessage fallback only
         }
 
         // ── iframe load log ────────────────────────────────────────────────────
